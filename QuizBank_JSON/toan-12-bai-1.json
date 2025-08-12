@@ -1,0 +1,49 @@
+
+{
+  "title": "Bài 1: Sự đồng biến, nghịch biến của hàm số",
+  "questions": {
+    "multipleChoice": [
+      {
+        "id": "mcq1-12-1",
+        "question": "Hàm số y = x^3 - 3x đồng biến trên khoảng nào dưới đây?",
+        "options": [
+          "(-∞; -1)",
+          "(1; +∞)",
+          "(-1; 1)",
+          "(-∞; -1) và (1; +∞)"
+        ],
+        "answer": "(-∞; -1) và (1; +∞)"
+      },
+      {
+        "id": "mcq2-12-1",
+        "question": "Tìm khoảng nghịch biến của hàm số y = -x^4 + 2x^2 - 5.",
+        "options": [
+          "(-1; 0) và (1; +∞)",
+          "(-∞; -1) và (0; 1)",
+          "(-1; 1)",
+          "(-∞; +∞)"
+        ],
+        "answer": "(-1; 0) và (1; +∞)"
+      }
+    ],
+    "trueFalse": [
+      {
+        "id": "tf1-12-1",
+        "statement": "Nếu f'(x) > 0 với mọi x thuộc K thì hàm số f(x) đồng biến trên K.",
+        "answer": true
+      },
+       {
+        "id": "tf2-12-1",
+        "statement": "Hàm số y = 1/x nghịch biến trên R \\ {0}.",
+        "answer": false
+      }
+    ],
+    "shortAnswer": [
+      {
+        "id": "sa1-12-1",
+        "question": "Tìm tất cả các giá trị thực của tham số m để hàm số y = (x+m)/(x-1) đồng biến trên từng khoảng xác định.",
+        "answer": "m < -1"
+      }
+    ]
+  }
+}

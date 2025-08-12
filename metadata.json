@@ -1,0 +1,5 @@
+{
+  "name": "Ngân Hàng Câu Hỏi Toán AI",
+  "description": "Một ứng dụng web để xây dựng, quản lý và tạo câu hỏi trắc nghiệm môn Toán cho giáo viên THPT sử dụng sức mạnh của Gemini AI.",
+  "requestFramePermissions": []
+}

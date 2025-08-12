@@ -1,0 +1,20 @@
+{
+  "title": "Bài 4: Đường tiệm cận",
+  "questions": {
+    "multipleChoice": [
+      {
+        "id": "mcq1-12-4",
+        "question": "Đồ thị hàm số y = (2x - 1)/(x + 1) có tiệm cận đứng là đường thẳng nào?",
+        "options": [
+          "x = 2",
+          "x = 1",
+          "x = -1",
+          "y = 2"
+        ],
+        "answer": "x = -1"
+      }
+    ],
+    "trueFalse": [],
+    "shortAnswer": []
+  }
+}
