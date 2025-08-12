@@ -7,10 +7,21 @@ if (!process.env.API_KEY) {
     console.warn("API_KEY environment variable not set. AI features will not work.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+let ai: GoogleGenAI | null = null;
+
+if (process.env.API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+}
 
 export const generateQuizQuestions = async (prompt: string): Promise<string> => {
     try {
+        if (!ai) {
+            return JSON.stringify({ 
+                error: "API Key chưa được cấu hình", 
+                details: "Vui lòng thiết lập API_KEY để sử dụng tính năng AI" 
+            }, null, 2);
+        }
+
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
