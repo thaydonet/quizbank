@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
@@ -13,14 +12,14 @@ const QuizBankPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<string>('toan-12-bai-1');
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'choice' | 'short'>('all');
+  const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [id: string]: Question }>({});
+  const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const navigate = useNavigate();
 
   const fetchLessonData = useCallback(async (path: string) => {
     setIsLoading(true);
     setError(null);
     setActiveLesson(path);
-    setSelectedQuestions([]); // Reset selection on new lesson
     try {
       const response = await fetch(`/QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
       if (!response.ok) {
@@ -28,6 +27,13 @@ const QuizBankPage: React.FC = () => {
       }
       const data: QuizData = await response.json();
       setQuizData(data);
+      setAllLoadedQuestions(prev => {
+        const newPool = { ...prev };
+        data.questions.forEach(q => {
+          newPool[q.id] = q;
+        });
+        return newPool;
+      });
     } catch (err) {
       if (err instanceof Error) setError(err.message);
       else setError('Đã xảy ra lỗi không xác định.');
@@ -49,18 +55,27 @@ const QuizBankPage: React.FC = () => {
   
   const filteredQuestions = useMemo(() => {
     if (!quizData) return [];
-    if (activeTab === 'all') return quizData.questions;
-    if (activeTab === 'choice') return quizData.questions.filter(q => q.type === 'mcq' || q.type === 'msq');
-    if (activeTab === 'short') return quizData.questions.filter(q => q.type === 'sa');
-    return [];
+    switch (activeTab) {
+      case 'mcq':
+        return quizData.questions.filter(q => q.type === 'mcq');
+      case 'msq':
+        return quizData.questions.filter(q => q.type === 'msq');
+      case 'sa':
+        return quizData.questions.filter(q => q.type === 'sa');
+      case 'all':
+      default:
+        return quizData.questions;
+    }
   }, [quizData, activeTab]);
   
   const counts = useMemo(() => {
-      if (!quizData) return { all: 0, choice: 0, short: 0 };
-      const all = quizData.questions.length;
-      const choice = quizData.questions.filter(q => q.type === 'mcq' || q.type === 'msq').length;
-      const short = all - choice;
-      return { all, choice, short };
+      if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
+      return {
+        all: quizData.questions.length,
+        mcq: quizData.questions.filter(q => q.type === 'mcq').length,
+        msq: quizData.questions.filter(q => q.type === 'msq').length,
+        sa: quizData.questions.filter(q => q.type === 'sa').length
+      };
   }, [quizData]);
 
   const handleSelectAll = () => {
@@ -72,21 +87,25 @@ const QuizBankPage: React.FC = () => {
   };
   
   const handleOfflineExam = () => {
-    if (!quizData || selectedQuestions.length === 0) return;
-    const questionsToPrint = quizData.questions.filter(q => selectedQuestions.includes(q.id));
+    if (selectedQuestions.length === 0) return;
+    const questionsToPrint = selectedQuestions
+        .map(id => allLoadedQuestions[id])
+        .filter((q): q is Question => q !== undefined);
     
-    let fileContent = `ĐỀ THI: ${quizData.title}\n`;
+    if (questionsToPrint.length === 0) return;
+    
+    let fileContent = `ĐỀ THI TỔNG HỢP\n`;
     fileContent += `Số câu: ${questionsToPrint.length}\n`;
     fileContent += `----------------------------------------\n\n`;
     fileContent += "--- PHẦN CÂU HỎI ---\n\n";
 
     questionsToPrint.forEach((q, i) => {
-        fileContent += `Câu ${i + 1}: ${q.question}\n`;
+        fileContent += `Câu ${i + 1}: ${q.question.replace(/\$/g, '')}\n`; // Basic LaTeX removal for txt
         if (q.type !== 'sa') {
-            fileContent += `  A. ${q.option_a || ''}\n`;
-            fileContent += `  B. ${q.option_b || ''}\n`;
-            fileContent += `  C. ${q.option_c || ''}\n`;
-            fileContent += `  D. ${q.option_d || ''}\n`;
+            fileContent += `  A. ${q.option_a?.replace(/\$/g, '') || ''}\n`;
+            fileContent += `  B. ${q.option_b?.replace(/\$/g, '') || ''}\n`;
+            fileContent += `  C. ${q.option_c?.replace(/\$/g, '') || ''}\n`;
+            fileContent += `  D. ${q.option_d?.replace(/\$/g, '') || ''}\n`;
         } else {
             fileContent += `  Đáp án: ________________\n`
         }
@@ -98,15 +117,14 @@ const QuizBankPage: React.FC = () => {
     questionsToPrint.forEach((q, i) => {
         fileContent += `Câu ${i + 1}:\n`;
         fileContent += `  Đáp án đúng: ${q.correct_option}\n`;
-        fileContent += `  Giải thích: ${q.explanation}\n\n`;
+        fileContent += `  Giải thích: ${q.explanation.replace(/\$/g, '')}\n\n`;
     });
     
     const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const safeFileName = quizData.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-    a.download = `de-thi-offline-${safeFileName}.txt`;
+    a.download = `de-thi-tong-hop.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -114,9 +132,14 @@ const QuizBankPage: React.FC = () => {
   };
 
   const handleOnlineExam = () => {
-    if (!quizData || selectedQuestions.length === 0) return;
-    const questionsForExam = quizData.questions.filter(q => selectedQuestions.includes(q.id));
-    navigate('/exam', { state: { questions: questionsForExam, title: quizData.title } });
+    if (selectedQuestions.length === 0) return;
+    const questionsForExam = selectedQuestions
+        .map(id => allLoadedQuestions[id])
+        .filter((q): q is Question => q !== undefined);
+        
+    if (questionsForExam.length === 0) return;
+
+    navigate('/exam', { state: { questions: questionsForExam, title: "Đề thi tổng hợp" } });
   };
   
   const renderContent = () => {
@@ -132,11 +155,14 @@ const QuizBankPage: React.FC = () => {
               <button onClick={() => setActiveTab('all')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
                   Tất cả <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.all}</span>
               </button>
-              <button onClick={() => setActiveTab('choice')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'choice' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Trắc nghiệm <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.choice}</span>
+              <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'mcq' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Trắc nghiệm (mcq) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.mcq}</span>
               </button>
-              <button onClick={() => setActiveTab('short')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'short' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Trả lời ngắn <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.short}</span>
+              <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'msq' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Đúng - Sai (msq) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.msq}</span>
+              </button>
+              <button onClick={() => setActiveTab('sa')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'sa' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Trả lời ngắn (sa) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.sa}</span>
               </button>
           </nav>
       </div>
