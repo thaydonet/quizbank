@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { generateQuizQuestions } from '../services/geminiService';
 
 const AIGeneratorPage: React.FC = () => {
-    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi trắc nghiệm về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số". Các câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
+    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số" cho lớp 12. Trong đó:\n- 2 câu dạng trắc nghiệm một đáp án (mcq).\n- 2 câu dạng trắc nghiệm nhiều đáp án (msq).\n- 1 câu dạng trả lời ngắn (sa).\nCác câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
     const [generatedJson, setGeneratedJson] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ const AIGeneratorPage: React.FC = () => {
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Trình tạo câu hỏi bằng AI</h1>
-                <p className="text-gray-600 mb-6">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ LaTeX và lời giải chi tiết.</p>
+                <p className="text-gray-600 mb-6">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.</p>
                 
                 {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert"><p>{error}</p></div>}
                 
@@ -74,7 +74,7 @@ const AIGeneratorPage: React.FC = () => {
                             <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-1">Yêu cầu (Prompt)</label>
                             <textarea
                                 id="prompt"
-                                rows={8}
+                                rows={10}
                                 className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
@@ -103,7 +103,7 @@ const AIGeneratorPage: React.FC = () => {
                             <label htmlFor="json-output" className="block text-sm font-medium text-gray-700 mb-1">Kết quả JSON (có thể chỉnh sửa)</label>
                             <textarea
                                 id="json-output"
-                                rows={18}
+                                rows={20}
                                 className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 font-mono text-sm bg-gray-50"
                                 value={generatedJson}
                                 onChange={(e) => setGeneratedJson(e.target.value)}
