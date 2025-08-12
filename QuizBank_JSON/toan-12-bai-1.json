@@ -1,49 +1,36 @@
 
 {
   "title": "Bài 1: Sự đồng biến, nghịch biến của hàm số",
-  "questions": {
-    "multipleChoice": [
-      {
-        "id": "mcq1-12-1",
-        "question": "Hàm số y = x^3 - 3x đồng biến trên khoảng nào dưới đây?",
-        "options": [
-          "(-∞; -1)",
-          "(1; +∞)",
-          "(-1; 1)",
-          "(-∞; -1) và (1; +∞)"
-        ],
-        "answer": "(-∞; -1) và (1; +∞)"
-      },
-      {
-        "id": "mcq2-12-1",
-        "question": "Tìm khoảng nghịch biến của hàm số y = -x^4 + 2x^2 - 5.",
-        "options": [
-          "(-1; 0) và (1; +∞)",
-          "(-∞; -1) và (0; 1)",
-          "(-1; 1)",
-          "(-∞; +∞)"
-        ],
-        "answer": "(-1; 0) và (1; +∞)"
-      }
-    ],
-    "trueFalse": [
-      {
-        "id": "tf1-12-1",
-        "statement": "Nếu f'(x) > 0 với mọi x thuộc K thì hàm số f(x) đồng biến trên K.",
-        "answer": true
-      },
-       {
-        "id": "tf2-12-1",
-        "statement": "Hàm số y = 1/x nghịch biến trên R \\ {0}.",
-        "answer": false
-      }
-    ],
-    "shortAnswer": [
-      {
-        "id": "sa1-12-1",
-        "question": "Tìm tất cả các giá trị thực của tham số m để hàm số y = (x+m)/(x-1) đồng biến trên từng khoảng xác định.",
-        "answer": "m < -1"
-      }
-    ]
-  }
+  "questions": [
+    {
+      "id": "mcq1-12-1",
+      "question": "Hàm số $y = x^3 - 3x$ đồng biến trên khoảng nào dưới đây?",
+      "option_a": "(-∞; -1)",
+      "option_b": "(1; +∞)",
+      "option_c": "(-1; 1)",
+      "option_d": "(-∞; -1) và (1; +∞)",
+      "correct_option": "D",
+      "explanation": "Để tìm khoảng đồng biến, ta xét đạo hàm $y' = 3x^2 - 3$. Ta có $y' > 0 \\iff 3x^2 - 3 > 0 \\iff x^2 > 1 \\iff x < -1$ hoặc $x > 1$. Vậy hàm số đồng biến trên các khoảng $(-∞; -1)$ và $(1; +∞)$."
+    },
+    {
+      "id": "mcq2-12-1",
+      "question": "Tìm khoảng nghịch biến của hàm số $y = -x^4 + 2x^2 - 5$.",
+      "option_a": "(-1; 0)$ và $(1; +∞)",
+      "option_b": "(-∞; -1)$ và $(0; 1)",
+      "option_c": "(-1; 1)",
+      "option_d": "(-∞; +∞)",
+      "correct_option": "A",
+      "explanation": "Ta có $y' = -4x^3 + 4x = -4x(x^2 - 1)$. Xét $y' < 0 \\iff -4x(x-1)(x+1) < 0$. Lập bảng xét dấu, ta thấy $y' < 0$ khi $x \\in (-1; 0) \\cup (1; +∞)$. Vậy hàm số nghịch biến trên các khoảng $(-1; 0)$ và $(1; +∞)$."
+    },
+    {
+      "id": "sa1-12-1-mcq",
+      "question": "Tìm tất cả các giá trị thực của tham số $m$ để hàm số $y = \\frac{x+m}{x-1}$ đồng biến trên từng khoảng xác định.",
+      "option_a": "$m > -1$",
+      "option_b": "$m < -1$",
+      "option_c": "$m \\le -1$",
+      "option_d": "$m \\ge -1$",
+      "correct_option": "B",
+      "explanation": "Tập xác định $D = \\mathbb{R} \\setminus \\{1\\}$. Đạo hàm $y' = \\frac{1(x-1) - 1(x+m)}{(x-1)^2} = \\frac{-1-m}{(x-1)^2}$. Để hàm số đồng biến trên từng khoảng xác định, ta cần $y' > 0$ với mọi $x \\in D$. Điều này tương đương với $-1-m > 0 \\iff m < -1$."
+    }
+  ]
 }

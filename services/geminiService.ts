@@ -2,13 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 if (!process.env.API_KEY) {
-    // In a real app, this would be a fatal error.
-    // Here we console.warn for development purposes.
     console.warn("API_KEY environment variable not set. AI features will not work.");
 }
 
 let ai: GoogleGenAI | null = null;
-
 if (process.env.API_KEY) {
     ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
@@ -26,62 +23,31 @@ export const generateQuizQuestions = async (prompt: string): Promise<string> => 
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
-                systemInstruction: "Bạn là một giáo viên Toán THPT chuyên nghiệp ở Việt Nam. Nhiệm vụ của bạn là tạo ra các câu hỏi trắc nghiệm Toán học chất lượng cao bằng tiếng Việt dựa trên yêu cầu của người dùng. Hãy tuân thủ nghiêm ngặt cấu trúc JSON được yêu cầu.",
+                systemInstruction: "Bạn là một giáo viên Toán THPT chuyên nghiệp ở Việt Nam. Nhiệm vụ của bạn là tạo ra các câu hỏi trắc nghiệm Toán học chất lượng cao bằng tiếng Việt. Tất cả các công thức toán phải được bao quanh bởi cú pháp LaTeX (ví dụ: $y = x^2 + 1$ hoặc $$ \\int_0^1 x \\,dx $$). Cung cấp lời giải chi tiết và rõ ràng cho mỗi câu hỏi. Hãy tuân thủ nghiêm ngặt cấu trúc JSON được yêu cầu.",
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
                         title: {
                             type: Type.STRING,
-                            description: "Tiêu đề của bài kiểm tra, ví dụ: 'Bài 3: Giá trị lớn nhất và nhỏ nhất của hàm số'."
+                            description: "Tiêu đề của bộ câu hỏi, ví dụ: 'Bài 3: Giá trị lớn nhất và nhỏ nhất của hàm số'."
                         },
                         questions: {
-                            type: Type.OBJECT,
-                            properties: {
-                                multipleChoice: {
-                                    type: Type.ARRAY,
-                                    description: "Danh sách các câu hỏi trắc nghiệm nhiều lựa chọn.",
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            id: { type: Type.STRING, description: "ID duy nhất cho câu hỏi, ví dụ 'mcq1'." },
-                                            question: { type: Type.STRING, description: "Nội dung câu hỏi." },
-                                            options: {
-                                                type: Type.ARRAY,
-                                                description: "Danh sách 4 phương án trả lời A, B, C, D.",
-                                                items: { type: Type.STRING }
-                                            },
-                                            answer: { type: Type.STRING, description: "Đáp án đúng, phải là một trong các phương án trong 'options'." }
-                                        },
-                                        required: ["id", "question", "options", "answer"]
-                                    }
+                            type: Type.ARRAY,
+                            description: "Danh sách các câu hỏi trắc nghiệm.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    id: { type: Type.STRING, description: "ID duy nhất cho câu hỏi, ví dụ 'mcq1'." },
+                                    question: { type: Type.STRING, description: "Nội dung câu hỏi, định dạng bằng LaTeX." },
+                                    option_a: { type: Type.STRING, description: "Phương án A, định dạng bằng LaTeX." },
+                                    option_b: { type: Type.STRING, description: "Phương án B, định dạng bằng LaTeX." },
+                                    option_c: { type: Type.STRING, description: "Phương án C, định dạng bằng LaTeX." },
+                                    option_d: { type: Type.STRING, description: "Phương án D, định dạng bằng LaTeX." },
+                                    correct_option: { type: Type.STRING, description: "Đáp án đúng, là một trong các ký tự 'A', 'B', 'C', 'D'." },
+                                    explanation: { type: Type.STRING, description: "Lời giải chi tiết cho câu hỏi, định dạng bằng LaTeX." }
                                 },
-                                trueFalse: {
-                                    type: Type.ARRAY,
-                                    description: "Danh sách các câu hỏi dạng Đúng/Sai.",
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            id: { type: Type.STRING, description: "ID duy nhất cho câu hỏi, ví dụ 'tf1'." },
-                                            statement: { type: Type.STRING, description: "Mệnh đề cần xác định Đúng hay Sai." },
-                                            answer: { type: Type.BOOLEAN, description: "Đáp án đúng (true) hoặc sai (false)." }
-                                        },
-                                        required: ["id", "statement", "answer"]
-                                    }
-                                },
-                                shortAnswer: {
-                                    type: Type.ARRAY,
-                                    description: "Danh sách các câu hỏi dạng trả lời ngắn.",
-                                    items: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            id: { type: Type.STRING, description: "ID duy nhất cho câu hỏi, ví dụ 'sa1'." },
-                                            question: { type: Type.STRING, description: "Nội dung câu hỏi." },
-                                            answer: { type: Type.STRING, description: "Đáp án ngắn gọn." }
-                                        },
-                                        required: ["id", "question", "answer"]
-                                    }
-                                }
+                                required: ["id", "question", "option_a", "option_b", "option_c", "option_d", "correct_option", "explanation"]
                             }
                         }
                     },
@@ -91,8 +57,7 @@ export const generateQuizQuestions = async (prompt: string): Promise<string> => 
         });
 
         const jsonString = response.text.trim();
-        // Basic validation, pretty print for readability in the UI
-        JSON.parse(jsonString);
+        JSON.parse(jsonString); // Basic validation
         return JSON.stringify(JSON.parse(jsonString), null, 2);
 
     } catch (error) {

@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 import { generateQuizQuestions } from '../services/geminiService';
 
 const AIGeneratorPage: React.FC = () => {
-    const [prompt, setPrompt] = useState<string>('Tạo 3 câu hỏi trắc nghiệm và 2 câu hỏi đúng/sai về sự đồng biến, nghịch biến của hàm số bậc ba, mức độ nhận biết.');
+    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi trắc nghiệm về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số". Các câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
     const [generatedJson, setGeneratedJson] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [fileName, setFileName] = useState<string>('dong-bien-nghich-bien.json');
+    const [fileName, setFileName] = useState<string>('gtln-gtnn.json');
 
     const handleGenerate = async () => {
         if (!prompt) {
@@ -26,7 +26,6 @@ const AIGeneratorPage: React.FC = () => {
         const result = await generateQuizQuestions(prompt);
         setGeneratedJson(result);
 
-        // Check if there was an error in the returned JSON
         try {
             const parsedResult = JSON.parse(result);
             if (parsedResult.error) {
@@ -45,9 +44,8 @@ const AIGeneratorPage: React.FC = () => {
             return;
         }
         try {
-            // Validate JSON before downloading
             JSON.parse(generatedJson);
-            const blob = new Blob([generatedJson], { type: 'application/json' });
+            const blob = new Blob([generatedJson], { type: 'application/json;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -65,7 +63,7 @@ const AIGeneratorPage: React.FC = () => {
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Trình tạo câu hỏi bằng AI</h1>
-                <p className="text-gray-600 mb-6">Nhập yêu cầu chi tiết, AI sẽ tạo bộ câu hỏi theo định dạng JSON cho bạn.</p>
+                <p className="text-gray-600 mb-6">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ LaTeX và lời giải chi tiết.</p>
                 
                 {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert"><p>{error}</p></div>}
                 
@@ -80,7 +78,7 @@ const AIGeneratorPage: React.FC = () => {
                                 className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu chứa tham số m."
+                                placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu chứa tham số m. Tất cả công thức toán phải dùng LaTeX. Cung cấp lời giải chi tiết."
                             />
                         </div>
                         <button

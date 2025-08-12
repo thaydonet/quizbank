@@ -1,38 +1,20 @@
 
-export enum QuestionType {
-  MultipleChoice = 'multipleChoice',
-  TrueFalse = 'trueFalse',
-  ShortAnswer = 'shortAnswer',
-}
-
 export interface MultipleChoiceQuestion {
   id: string;
-  question: string;
-  options: string[];
-  answer: string;
+  question: string; // Will contain LaTeX
+  option_a: string; // Will contain LaTeX
+  option_b: string; // Will contain LaTeX
+  option_c: string; // Will contain LaTeX
+  option_d: string; // Will contain LaTeX
+  correct_option: 'A' | 'B' | 'C' | 'D';
+  explanation: string; // Will contain LaTeX
 }
 
-export interface TrueFalseQuestion {
-  id: string;
-  statement: string;
-  answer: boolean;
-}
-
-export interface ShortAnswerQuestion {
-  id: string;
-  question: string;
-  answer: string;
-}
-
-export type Question = MultipleChoiceQuestion | TrueFalseQuestion | ShortAnswerQuestion;
+export type Question = MultipleChoiceQuestion;
 
 export interface QuizData {
   title: string;
-  questions: {
-    multipleChoice: MultipleChoiceQuestion[];
-    trueFalse: TrueFalseQuestion[];
-    shortAnswer: ShortAnswerQuestion[];
-  };
+  questions: MultipleChoiceQuestion[];
 }
 
 export interface Lesson {
