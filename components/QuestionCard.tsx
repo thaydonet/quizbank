@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { Question } from '../types';
 import MathContent from './MathContent';
@@ -37,9 +36,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
   const getQuestionTypeBadge = () => {
     switch (question.type) {
       case 'mcq':
-        return <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">1 Đáp án</span>;
+        return <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Trắc nghiệm</span>;
       case 'msq':
-        return <span className="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Nhiều đáp án</span>;
+        return <span className="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Đúng - Sai</span>;
       case 'sa':
         return <span className="text-xs font-medium bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Trả lời ngắn</span>;
       default:
