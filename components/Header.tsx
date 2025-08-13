@@ -9,7 +9,7 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="text-2xl font-bold text-indigo-600">
-              Math<span className="text-gray-800">Bank AI</span>
+              Math<span className="text-gray-800">Quiz Bank AI</span>
             </Link>
           </div>
           <div className="flex items-center">
@@ -18,7 +18,7 @@ const Header: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 transition-all duration-200 transform hover:scale-105"
             >
               <SparklesIcon className="w-5 h-5" />
-              Tạo bằng AI
+              Tạo Quiz AI
             </Link>
           </div>
         </div>
