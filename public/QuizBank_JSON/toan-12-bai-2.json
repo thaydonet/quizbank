@@ -1,0 +1,56 @@
+{
+   "title": "Cực trị của hàm số public",
+  "questions": [
+    {
+      "correct_option": "C",
+      "explanation": "Dựa vào bảng biến thiên, ta thấy đạo hàm $y'$ đổi dấu từ âm sang dương khi đi qua $x=1$. Đây là dấu hiệu của một điểm cực tiểu. Giá trị cực tiểu của hàm số là $y = -2$ tại $x = 1$. Vậy điểm cực tiểu của hàm số là $x=1$.",
+      "id": "mcq1",
+      "question": "Cho hàm số $y = f(x)$ có bảng biến thiên như sau:\n$$\\begin{array}{|c|ccccccc|}\n\\hline\nx & -\\infty & & -1 & & 1 & & +\\infty \\\\\n\\hline\ny' & & + & 0 & - & 0 & + & \\\\\n\\hline\ny & & & 3 & & & & +\\infty \\\\\n& -\\infty & \\nearrow & & \\searrow & & \\nearrow & \\\\\n& & & & & -2 & & \\\\\n\\hline\n\\end{array}$$\nĐiểm cực tiểu của hàm số đã cho là:",
+      "type": "mcq",
+      "option_a": "$x = -2$",
+      "option_b": "$x = -1$",
+      "option_c": "$x = 1$",
+      "option_d": "$y = 3$"
+    },
+    {
+      "correct_option": "C",
+      "explanation": "Để tìm số điểm cực trị của hàm số, ta cần xét dấu của đạo hàm bậc nhất.\nTa có $y = x^3 - 3x^2 + 2$.\nĐạo hàm bậc nhất là $y' = 3x^2 - 6x$.\nCho $y' = 0 \\Rightarrow 3x^2 - 6x = 0 \\Rightarrow 3x(x - 2) = 0$.\nSuy ra $x = 0$ hoặc $x = 2$.\nTa lập bảng xét dấu của $y'$:\n$$\\begin{array}{|c|ccccccc|}\n\\hline\nx & -\\infty & & 0 & & 2 & & +\\infty \\\\\n\\hline\ny' & & + & 0 & - & 0 & + & \\\\\n\\hline\n\\end{array}$$\nTại $x=0$, $y'$ đổi dấu từ dương sang âm, nên $x=0$ là điểm cực đại.\nTại $x=2$, $y'$ đổi dấu từ âm sang dương, nên $x=2$ là điểm cực tiểu.\nVậy hàm số có 2 điểm cực trị.",
+      "id": "mcq2",
+      "question": "Hàm số $y = x^3 - 3x^2 + 2$ có bao nhiêu điểm cực trị?",
+      "type": "mcq",
+      "option_a": "0",
+      "option_b": "1",
+      "option_c": "2",
+      "option_d": "3"
+    },
+    {
+      "correct_option": "A,B,C,D",
+      "explanation": "Để xác định các mệnh đề đúng, ta tìm các điểm cực trị của hàm số.\nTa có $y = x^4 - 2x^2 + 3$.\nĐạo hàm bậc nhất là $y' = 4x^3 - 4x = 4x(x^2 - 1) = 4x(x-1)(x+1)$.\nCho $y' = 0 \\Rightarrow 4x(x-1)(x+1) = 0 \\Rightarrow x = -1, x = 0, x = 1$.\nTính giá trị của hàm số tại các điểm này:\n$y(-1) = (-1)^4 - 2(-1)^2 + 3 = 1 - 2 + 3 = 2$.\n$y(0) = 0^4 - 2(0)^2 + 3 = 3$.\n$y(1) = 1^4 - 2(1)^2 + 3 = 1 - 2 + 3 = 2$.\nBảng biến thiên (hoặc xét dấu $y'$):\n$$\\begin{array}{|c|ccccccccc|}\n\\hline\nx & -\\infty & & -1 & & 0 & & 1 & & +\\infty \\\\\n\\hline\ny' & & - & 0 & + & 0 & - & 0 & + & \\\\\n\\hline\ny & +\\infty & \\searrow & 2 & \\nearrow & 3 & \\searrow & 2 & \\nearrow & +\\infty \\\\\n\\hline\n\\end{array}$$\nTừ bảng biến thiên, ta có:\n- Tại $x=0$, $y'$ đổi dấu từ dương sang âm, nên $x=0$ là điểm cực đại và giá trị cực đại là $y(0)=3$. Do đó, mệnh đề A ($y$ đạt cực đại tại $x=0$) và D (Điểm $(0, 3)$ là một điểm cực đại của đồ thị hàm số) là đúng.\n- Tại $x=-1$ và $x=1$, $y'$ đổi dấu từ âm sang dương, nên $x=-1$ và $x=1$ là các điểm cực tiểu. Giá trị cực tiểu là $y(-1)=2$ và $y(1)=2$. Do đó, mệnh đề B (Giá trị cực tiểu của hàm số là $y = 2$) và C (Hàm số có hai điểm cực tiểu) là đúng.\nVậy tất cả các mệnh đề A, B, C, D đều đúng.",
+      "id": "msq1",
+      "question": "Cho hàm số $y = x^4 - 2x^2 + 3$. Các mệnh đề nào sau đây là đúng?",
+      "type": "msq",
+      "option_a": "Hàm số đạt cực đại tại $x = 0$.",
+      "option_b": "Giá trị cực tiểu của hàm số là $y = 2$.",
+      "option_c": "Hàm số có hai điểm cực tiểu.",
+      "option_d": "Điểm $(0, 3)$ là một điểm cực đại của đồ thị hàm số."
+    },
+    {
+      "correct_option": "A,B",
+      "explanation": "Hàm số đã cho là $y = \\frac{1}{3}x^3 - (m+1)x^2 + (m^2+2m)x + 1$.\nĐạo hàm bậc nhất là $y' = x^2 - 2(m+1)x + (m^2+2m)$.\nHàm số có hai điểm cực trị khi và chỉ khi phương trình $y' = 0$ có hai nghiệm phân biệt.\nPhương trình $y' = 0$ là một phương trình bậc hai $x^2 - 2(m+1)x + (m^2+2m) = 0$.\nĐể phương trình có hai nghiệm phân biệt, biệt thức delta phẩy $\\Delta'$ phải lớn hơn 0.\n$\\Delta' = (-(m+1))^2 - 1 \\cdot (m^2+2m) = (m+1)^2 - (m^2+2m) = (m^2+2m+1) - (m^2+2m) = 1$.\nVì $\\Delta' = 1 > 0$ với mọi giá trị của $m$, nên hàm số luôn có hai điểm cực trị phân biệt $x_1, x_2$ với mọi $m$.\nTheo hệ thức Vi-ét, tích hai nghiệm $x_1x_2$ là:\n$x_1x_2 = \\frac{m^2+2m}{1} = m^2+2m$.\nTheo đề bài, ta có $x_1x_2 = 3$.\nDo đó, $m^2+2m = 3 \\Rightarrow m^2+2m-3 = 0$.\nGiải phương trình bậc hai này:\n$(m-1)(m+3) = 0$.\nVậy $m=1$ hoặc $m=-3$.\nKiểm tra các phương án:\n- Phương án A: $m=1$ là một giá trị đúng.\n- Phương án B: $m=-3$ là một giá trị đúng.\n- Phương án C: $m=\\frac{1}{2}$ là sai.\n- Phương án D: $m=-1$ là sai.\nCác giá trị của tham số $m$ để thỏa mãn điều kiện là $m=1$ và $m=-3$. Do đó, các đáp án A và B là đúng.",
+      "id": "msq2",
+      "question": "Cho hàm số $y = \\frac{1}{3}x^3 - (m+1)x^2 + (m^2+2m)x + 1$. Các giá trị của tham số $m$ để hàm số có hai điểm cực trị $x_1, x_2$ thỏa mãn $x_1x_2 = 3$ là:",
+      "type": "msq",
+      "option_a": "$m=1$",
+      "option_b": "$m=-3$",
+      "option_c": "$m=\\frac{1}{2}$",
+      "option_d": "$m=-1$"
+    },
+    {
+      "correct_option": "0",
+      "explanation": "Để hàm số $y = x^3 - 3mx^2 + 3(m^2-1)x - m^3+m$ đạt cực tiểu tại $x = 1$, ta cần hai điều kiện sau:\n1. Đạo hàm bậc nhất tại $x=1$ phải bằng 0: $y'(1) = 0$.\n2. Đạo hàm bậc hai tại $x=1$ phải lớn hơn 0: $y''(1) > 0$.\n\nBước 1: Tính đạo hàm bậc nhất $y'$.\n$y' = \\frac{d}{dx}(x^3 - 3mx^2 + 3(m^2-1)x - m^3+m) = 3x^2 - 6mx + 3(m^2-1)$.\n\nBước 2: Áp dụng điều kiện $y'(1) = 0$.\nThay $x=1$ vào $y'$: $y'(1) = 3(1)^2 - 6m(1) + 3(m^2-1) = 3 - 6m + 3m^2 - 3 = 3m^2 - 6m$.\nCho $y'(1) = 0 \\Rightarrow 3m^2 - 6m = 0 \\Rightarrow 3m(m-2) = 0$.\nTừ đó suy ra $m=0$ hoặc $m=2$.\n\nBước 3: Tính đạo hàm bậc hai $y''$.\n$y'' = \\frac{d}{dx}(3x^2 - 6mx + 3(m^2-1)) = 6x - 6m$.\n\nBước 4: Kiểm tra điều kiện $y''(1) > 0$ cho từng giá trị của $m$.\n- Trường hợp 1: Với $m=0$.\nThay $m=0$ vào $y''(1)$: $y''(1) = 6(1) - 6(0) = 6 - 0 = 6$.\nVì $y''(1) = 6 > 0$, nên hàm số đạt cực tiểu tại $x=1$ khi $m=0$. Giá trị $m=0$ thỏa mãn.\n\n- Trường hợp 2: Với $m=2$.\nThay $m=2$ vào $y''(1)$: $y''(1) = 6(1) - 6(2) = 6 - 12 = -6$.\nVì $y''(1) = -6 < 0$, nên hàm số đạt cực đại tại $x=1$ khi $m=2$. Giá trị $m=2$ không thỏa mãn yêu cầu đạt cực tiểu.\n\nKết luận: Giá trị của tham số $m$ để hàm số đạt cực tiểu tại $x=1$ là $m=0$.",
+      "id": "sa1",
+      "question": "Tìm giá trị của tham số $m$ để hàm số $y = x^3 - 3mx^2 + 3(m^2-1)x - m^3+m$ đạt cực tiểu tại $x = 1$.",
+      "type": "sa"
+    }
+  ]
+ }
