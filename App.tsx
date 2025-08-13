@@ -1,4 +1,3 @@
-
 import React, { Suspense } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
@@ -10,10 +9,10 @@ import OnlineExamPage from './pages/OnlineExamPage';
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-gray-50">
         <Header />
         <main className="flex-grow">
-          <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>}>
+          <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600"></div></div>}>
             <Routes>
               <Route path="/" element={<QuizBankPage />} />
               <Route path="/create" element={<AIGeneratorPage />} />

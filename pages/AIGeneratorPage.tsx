@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { generateQuizQuestions } from '../services/geminiService';
+import SparklesIcon from '../components/icons/SparklesIcon';
 
 const AIGeneratorPage: React.FC = () => {
-    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số" cho lớp 12. Trong đó:\n- 2 câu dạng trắc nghiệm một đáp án (mcq).\n- 2 câu dạng trắc nghiệm nhiều đáp án (msq).\n- 1 câu dạng trả lời ngắn (sa).\nCác câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
+    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số" cho lớp 12. Trong đó:\n- 2 câu dạng trắc nghiệm một lựa chọn (mcq).\n- 2 câu dạng trắc nghiệm nhiều lựa chọn (msq).\n- 1 câu dạng trả lời ngắn (sa).\nCác câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
     const [generatedJson, setGeneratedJson] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -59,23 +59,27 @@ const AIGeneratorPage: React.FC = () => {
         }
     };
 
+    const baseInputClasses = "w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition";
+
     return (
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50">
             <div className="max-w-7xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Trình tạo câu hỏi bằng AI</h1>
-                <p className="text-gray-600 mb-6">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.</p>
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Trình tạo câu hỏi bằng AI</h1>
+                    <p className="text-lg text-gray-600 max-w-3xl mx-auto">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.</p>
+                </div>
                 
-                {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert"><p>{error}</p></div>}
+                {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert"><p className="font-bold">Đã xảy ra lỗi</p><p>{error}</p></div>}
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* --- Input Column --- */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200">
                         <div>
-                            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-1">Yêu cầu (Prompt)</label>
+                            <label htmlFor="prompt" className="block text-base font-semibold text-gray-700 mb-2">Yêu cầu (Prompt)</label>
                             <textarea
                                 id="prompt"
-                                rows={10}
-                                className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                rows={12}
+                                className={baseInputClasses}
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu chứa tham số m. Tất cả công thức toán phải dùng LaTeX. Cung cấp lời giải chi tiết."
@@ -84,27 +88,30 @@ const AIGeneratorPage: React.FC = () => {
                         <button
                             onClick={handleGenerate}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-3 px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-indigo-500/20"
                         >
                             {isLoading ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white"></div>
                                     <span>Đang tạo...</span>
                                 </>
                             ) : (
-                                'Tạo câu hỏi'
+                                <>
+                                    <SparklesIcon className="w-6 h-6"/>
+                                    <span>Tạo câu hỏi</span>
+                                </>
                             )}
                         </button>
                     </div>
 
                     {/* --- Output Column --- */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200">
                         <div>
-                            <label htmlFor="json-output" className="block text-sm font-medium text-gray-700 mb-1">Kết quả JSON (có thể chỉnh sửa)</label>
+                            <label htmlFor="json-output" className="block text-base font-semibold text-gray-700 mb-2">Kết quả JSON (có thể chỉnh sửa)</label>
                             <textarea
                                 id="json-output"
-                                rows={20}
-                                className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 font-mono text-sm bg-gray-50"
+                                rows={16}
+                                className={`${baseInputClasses} font-mono text-sm bg-gray-50/70 focus:ring-green-500/50 focus:border-green-500`}
                                 value={generatedJson}
                                 onChange={(e) => setGeneratedJson(e.target.value)}
                                 placeholder="Kết quả JSON sẽ xuất hiện ở đây..."
@@ -116,7 +123,7 @@ const AIGeneratorPage: React.FC = () => {
                                 <input
                                     type="text"
                                     id="file-name"
-                                    className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
                                     value={fileName}
                                     onChange={(e) => setFileName(e.target.value)}
                                 />
@@ -124,7 +131,7 @@ const AIGeneratorPage: React.FC = () => {
                             <button
                                 onClick={handleDownload}
                                 disabled={!generatedJson || isLoading}
-                                className="px-5 py-2 text-base font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                className="px-5 py-2 text-base font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 disabled:bg-green-400 disabled:cursor-not-allowed transition shadow-sm"
                             >
                                 Tải file .json
                             </button>

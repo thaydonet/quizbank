@@ -21,7 +21,7 @@ const QuizBankPage: React.FC = () => {
     setError(null);
     setActiveLesson(path);
     try {
-      const response = await fetch(`/QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
+      const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
       if (!response.ok) {
         throw new Error(`Không tìm thấy file: ${path}.json. Vui lòng tạo file này hoặc kiểm tra lại đường dẫn.`);
       }
@@ -143,26 +143,26 @@ const QuizBankPage: React.FC = () => {
   };
   
   const renderContent = () => {
-    if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>;
-    if (error) return <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>;
-    if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500">Không có câu hỏi nào cho bài học này.</div>;
+    if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
+    if (error) return <div className="text-center text-red-600 bg-red-100 p-4 rounded-lg border border-red-200">{error}</div>;
+    if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500 py-16">Không có câu hỏi nào cho bài học này.</div>;
 
     const allInViewSelected = filteredQuestions.length > 0 && selectedQuestions.length >= filteredQuestions.length && filteredQuestions.every(q => selectedQuestions.includes(q.id));
 
     const renderTabs = () => (
-      <div className="border-b border-gray-200 mb-4">
+      <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-              <button onClick={() => setActiveTab('all')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Tất cả <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.all}</span>
+              <button onClick={() => setActiveTab('all')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Tất cả <span className="bg-gray-200 text-gray-700 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.all}</span>
               </button>
-              <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'mcq' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Trắc nghiệm (mcq) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.mcq}</span>
+              <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'mcq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Một lựa chọn <span className="bg-blue-100 text-blue-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.mcq}</span>
               </button>
-              <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'msq' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Đúng - Sai (msq) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.msq}</span>
+              <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'msq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Nhiều lựa chọn <span className="bg-purple-100 text-purple-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.msq}</span>
               </button>
-              <button onClick={() => setActiveTab('sa')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'sa' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Trả lời ngắn (sa) <span className="bg-gray-200 text-gray-600 ml-2 px-2 py-0.5 rounded-full">{counts.sa}</span>
+              <button onClick={() => setActiveTab('sa')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'sa' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                  Trả lời ngắn <span className="bg-amber-100 text-amber-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.sa}</span>
               </button>
           </nav>
       </div>
@@ -170,14 +170,14 @@ const QuizBankPage: React.FC = () => {
 
     return (
       <div>
-        <div className="md:flex md:items-center md:justify-between mb-2">
-            <h2 className="text-3xl font-bold text-gray-800 truncate" title={quizData.title}>{quizData.title}</h2>
-            <div className="mt-4 md:mt-0 flex items-center gap-2 flex-shrink-0">
-                <button onClick={handleOfflineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+        <div className="md:flex md:items-center md:justify-between mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 truncate" title={quizData.title}>{quizData.title}</h2>
+            <div className="mt-4 md:mt-0 flex items-center gap-3 flex-shrink-0">
+                <button onClick={handleOfflineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
                     <PrinterIcon className="w-5 h-5"/>
                     <span>Tải đề .txt ({selectedQuestions.length})</span>
                 </button>
-                <button onClick={handleOnlineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
+                <button onClick={handleOnlineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm">
                     <PlayCircleIcon className="w-5 h-5"/>
                     <span>Thi Online ({selectedQuestions.length})</span>
                 </button>
@@ -186,18 +186,18 @@ const QuizBankPage: React.FC = () => {
         
         {renderTabs()}
         
-        <div className="mb-4 p-3 bg-white rounded-md border shadow-sm flex items-center justify-between">
+        <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between">
             <div className="flex items-center">
                  <input
                     id="select-all"
                     type="checkbox"
-                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
                     checked={allInViewSelected}
                     onChange={handleSelectAll}
                     disabled={filteredQuestions.length === 0}
                 />
                 <label htmlFor="select-all" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
-                    {allInViewSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả trong tab này'}
+                    {allInViewSelected ? 'Bỏ chọn tất cả' : `Chọn tất cả ${filteredQuestions.length} câu`}
                 </label>
             </div>
         </div>
@@ -212,7 +212,7 @@ const QuizBankPage: React.FC = () => {
                 onSelect={handleSelectQuestion}
                 />
             ))}
-             {filteredQuestions.length === 0 && <p className="text-center text-gray-500 py-8">Không có câu hỏi loại này.</p>}
+             {filteredQuestions.length === 0 && <p className="text-center text-gray-500 py-12">Không có câu hỏi loại này.</p>}
         </div>
       </div>
     );
