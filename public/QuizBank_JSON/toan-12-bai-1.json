@@ -11,9 +11,7 @@
       "option_c": "(-1; 1)",
       "option_d": "(-∞; 1)",
       "correct_option": "A,B",
-      "explanation": "Để tìm khoảng đồng biến, ta xét đạo hàm $y' = 3x^2 - 3$. 
-      Ta có $y' > 0 \\iff 3x^2 - 3 > 0 \\iff x^2 > 1 \\iff x < -1$ hoặc $x > 1$. 
-      Vậy hàm số đồng biến trên các khoảng $(-∞; -1)$ và $(1; +∞)$."
+      "explanation": "Để tìm khoảng đồng biến, ta xét đạo hàm $y' = 3x^2 - 3$. Ta có $y' > 0 \\iff 3x^2 - 3 > 0 \\iff x^2 > 1 \\iff x < -1$ hoặc $x > 1$.  Vậy hàm số đồng biến trên các khoảng $(-∞; -1)$ và $(1; +∞)$."
     },
     {
       "id": "mcq1-12-1",
@@ -25,8 +23,8 @@
       "option_d": "(-∞; +∞)",
       "correct_option": "A",
       "explanation": "Ta có $y' = -4x^3 + 4x = -4x(x^2 - 1)$. Xét $y' < 0 \\iff -4x(x-1)(x+1) < 0$. 
-      Lập bảng xét dấu, ta thấy $y' < 0$ khi $x \\in (-1; 0) \\cup (1; +∞)$. 
-      Vậy hàm số nghịch biến trên các khoảng $(-1; 0)$ và $(1; +∞)$."
+ Lập bảng xét dấu, ta thấy $y' < 0$ khi $x \\in (-1; 0) \\cup (1; +∞)$.
+ Vậy hàm số nghịch biến trên các khoảng $(-1; 0)$ và $(1; +∞)$."
     },
     {
       "id": "mcq2-12-1",
