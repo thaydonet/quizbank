@@ -17,6 +17,7 @@ const MathContent: React.FC<MathContentProps> = ({ content, className }) => {
 
   useEffect(() => {
     if (ref.current) {
+    console.log("MathContent content:", content);
         ref.current.innerHTML = content;
         try {
             if (window.renderMathInElement) {
