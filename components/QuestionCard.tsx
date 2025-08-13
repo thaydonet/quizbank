@@ -15,19 +15,27 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
   const options: { key: string; value: string }[] =
     question.type === 'sa'
       ? []
-      : [
-          { key: 'A', value: question.option_a || '' },
-          { key: 'B', value: question.option_b || '' },
-          { key: 'C', value: question.option_c || '' },
-          { key: 'D', value: question.option_d || '' },
-        ].filter(opt => opt.value);
+      : question.type === 'msq'
+        ? [
+            { key: 'a', value: question.option_a || '' },
+            { key: 'b', value: question.option_b || '' },
+            { key: 'c', value: question.option_c || '' },
+            { key: 'd', value: question.option_d || '' },
+          ].filter(opt => opt.value)
+        : [
+            { key: 'A', value: question.option_a || '' },
+            { key: 'B', value: question.option_b || '' },
+            { key: 'C', value: question.option_c || '' },
+            { key: 'D', value: question.option_d || '' },
+          ].filter(opt => opt.value);
 
   const getOptionClasses = (optionKey: string) => {
     if (!showAnswer) {
       return "border-gray-200 bg-gray-50 hover:bg-gray-100";
     }
-    const correctOptions = question.correct_option.split(',');
-    if (correctOptions.includes(optionKey)) {
+    // Đáp án đúng cho msq có thể là a,b,c,d hoặc A,B,C,D
+    const correctOptions = question.correct_option.split(',').map(x => x.trim().toLowerCase());
+    if (correctOptions.includes(optionKey.toLowerCase())) {
       return "border-green-300 bg-green-100 ring-2 ring-green-200";
     }
     return "border-gray-200 bg-gray-50";
@@ -37,9 +45,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
     const baseClasses = "text-xs font-semibold px-2.5 py-1 rounded-full";
     switch (question.type) {
       case 'mcq':
-        return <span className={`${baseClasses} bg-blue-100 text-blue-800`}>Một lựa chọn</span>;
+        return <span className={`${baseClasses} bg-blue-100 text-blue-800`}>Trắc nghiệm</span>;
       case 'msq':
-        return <span className={`${baseClasses} bg-purple-100 text-purple-800`}>Nhiều lựa chọn</span>;
+        return <span className={`${baseClasses} bg-purple-100 text-purple-800`}>Đúng - Sai</span>;
       case 'sa':
         return <span className={`${baseClasses} bg-amber-100 text-amber-800`}>Trả lời ngắn</span>;
       default:
@@ -70,18 +78,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
     >
       <div className="flex justify-between items-start mb-4">
           <div className="flex items-start gap-4 flex-grow">
-              <input
-                type="checkbox"
-                className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 cursor-pointer accent-indigo-600"
-                checked={isSelected}
-                readOnly
-                tabIndex={-1} // The parent div is focusable
-                aria-label={`Select question ${index + 1}`}
-              />
-              <p className="font-semibold text-gray-900 flex-grow">
-                <span className="text-indigo-600 mr-2">{`Câu ${index + 1}:`}</span>
-                <MathContent content={question.question} />
-              </p>
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onSelect(question.id)}
+              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 mr-2"
+              aria-label="Chọn câu hỏi"
+            />
+            <p className="font-semibold text-gray-900 flex-grow">
+              <span className="text-indigo-600 mr-2">{`Câu ${index + 1}:`}</span>
+              <MathContent content={question.question} />
+            </p>
           </div>
           <div className="ml-4 flex-shrink-0">
             {getQuestionTypeBadge()}
@@ -91,9 +98,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
       <div className="pl-9 space-y-4">
         {question.type !== 'sa' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {options.map((option) => (
+            {options.map((option, idx) => (
               <div key={option.key} className={`p-3 border rounded-lg text-gray-800 transition-all ${getOptionClasses(option.key)} flex items-start gap-2`}>
-                <strong className="font-semibold">{option.key}.</strong>
+                <strong className="font-semibold">
+                  {question.type === 'msq' ? `${option.key})` : `${option.key}.`}
+                </strong>
                 <MathContent content={option.value} />
               </div>
             ))}

@@ -7,6 +7,10 @@ import PrinterIcon from '../components/icons/PrinterIcon';
 import PlayCircleIcon from '../components/icons/PlayCircleIcon';
 
 const QuizBankPage: React.FC = () => {
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [printCount, setPrintCount] = useState(1);
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [shuffleMcqOptions, setShuffleMcqOptions] = useState(false);
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,12 +18,13 @@ const QuizBankPage: React.FC = () => {
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [id: string]: Question }>({});
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
   const fetchLessonData = useCallback(async (path: string) => {
-    setIsLoading(true);
-    setError(null);
-    setActiveLesson(path);
+  setIsLoading(true);
+  setError(null);
+  setActiveLesson(path);
     try {
       const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
       if (!response.ok) {
@@ -48,9 +53,14 @@ const QuizBankPage: React.FC = () => {
   }, [fetchLessonData, activeLesson]);
 
   const handleSelectQuestion = (id: string) => {
-    setSelectedQuestions(prev =>
-      prev.includes(id) ? prev.filter(qid => qid !== id) : [...prev, id]
-    );
+    setSelectedQuestions(prev => {
+      // Nếu đã chọn thì bỏ chọn, nếu chưa thì thêm vào
+      if (prev.includes(id)) {
+        return prev.filter(qid => qid !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
   
   const filteredQuestions = useMemo(() => {
@@ -88,59 +98,156 @@ const QuizBankPage: React.FC = () => {
   
   const handleOfflineExam = () => {
     if (selectedQuestions.length === 0) return;
-    const questionsToPrint = selectedQuestions
-        .map(id => allLoadedQuestions[id])
-        .filter((q): q is Question => q !== undefined);
-    
-    if (questionsToPrint.length === 0) return;
-    
-    let fileContent = `ĐỀ THI TỔNG HỢP\n`;
-    fileContent += `Số câu: ${questionsToPrint.length}\n`;
-    fileContent += `----------------------------------------\n\n`;
-    fileContent += "--- PHẦN CÂU HỎI ---\n\n";
-
-    questionsToPrint.forEach((q, i) => {
-        fileContent += `Câu ${i + 1}: ${q.question.replace(/\$/g, '')}\n`; // Basic LaTeX removal for txt
-        if (q.type !== 'sa') {
-            fileContent += `  A. ${q.option_a?.replace(/\$/g, '') || ''}\n`;
-            fileContent += `  B. ${q.option_b?.replace(/\$/g, '') || ''}\n`;
-            fileContent += `  C. ${q.option_c?.replace(/\$/g, '') || ''}\n`;
-            fileContent += `  D. ${q.option_d?.replace(/\$/g, '') || ''}\n`;
-        } else {
-            fileContent += `  Đáp án: ________________\n`
-        }
-        fileContent += "\n";
-    });
-
-    fileContent += "\n\n--- PHẦN ĐÁP ÁN & LỜI GIẢI ---\n\n";
-
-    questionsToPrint.forEach((q, i) => {
-        fileContent += `Câu ${i + 1}:\n`;
-        fileContent += `  Đáp án đúng: ${q.correct_option}\n`;
-        fileContent += `  Giải thích: ${q.explanation.replace(/\$/g, '')}\n\n`;
-    });
-    
-    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `de-thi-tong-hop.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setShowPrintDialog(true);
   };
+
+  // Trộn mảng
+  function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Sinh đề và in file
+  const handlePrintConfirm = () => {
+    const questionsToPrint = selectedQuestions
+      .map(id => allLoadedQuestions[id])
+      .filter((q): q is Question => q !== undefined);
+    if (questionsToPrint.length === 0) return;
+
+    // Chia nhóm câu hỏi
+    let mcq = questionsToPrint.filter(q => q.type === 'mcq');
+    let msq = questionsToPrint.filter(q => q.type === 'msq');
+    let sa = questionsToPrint.filter(q => q.type === 'sa');
+
+    let now = new Date();
+    let dateStr = now.toLocaleString('vi-VN');
+
+    for (let d = 1; d <= printCount; d++) {
+      let fileContent = `ĐỀ THI TỔNG HỢP - Đề số ${d}\n`;
+      fileContent += `Ngày tạo: ${dateStr}\n`;
+      fileContent += `Số câu: ${questionsToPrint.length}\n`;
+      fileContent += `----------------------------------------\n\n`;
+
+      // Trộn câu hỏi từng loại nếu chọn
+      let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
+      let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
+      let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
+
+      // Trộn đáp án cho MCQ và cập nhật correct_option
+      mcqQ = mcqQ.map(q => {
+        let options = [
+          { key: 'A', value: q.option_a },
+          { key: 'B', value: q.option_b },
+          { key: 'C', value: q.option_c },
+          { key: 'D', value: q.option_d }
+        ].filter(opt => opt.value);
+        let correctKey = q.correct_option.trim();
+        let correctValue = '';
+        // Tìm giá trị đáp án đúng ban đầu
+        if (['A','B','C','D'].includes(correctKey)) {
+          correctValue = q[`option_${correctKey.toLowerCase()}`];
+        } else {
+          correctValue = correctKey;
+        }
+        let shuffledOptions = shuffleMcqOptions ? shuffleArray(options) : options;
+        // Tìm vị trí mới của đáp án đúng
+        let newCorrectIndex = shuffledOptions.findIndex(opt => opt.value === correctValue);
+        let newCorrectOption = String.fromCharCode(65 + newCorrectIndex);
+        // Gán lại đáp án đúng
+        return {
+          ...q,
+          option_a: shuffledOptions[0]?.value,
+          option_b: shuffledOptions[1]?.value,
+          option_c: shuffledOptions[2]?.value,
+          option_d: shuffledOptions[3]?.value,
+          correct_option: newCorrectOption
+        };
+      });
+
+      // Phần I: Trắc nghiệm
+      if (mcqQ.length > 0) {
+        fileContent += "PHẦN I: Trắc nghiệm\n\n";
+        mcqQ.forEach((q, idx) => {
+          fileContent += `Câu ${idx + 1}: ${q.question}\n`;
+          ['A','B','C','D'].forEach((key, i) => {
+            if (q[`option_${key.toLowerCase()}`]) {
+              fileContent += `  ${key}. ${q[`option_${key.toLowerCase()}`]}\n`;
+            }
+          });
+          fileContent += `\n`;
+        });
+      }
+
+      // Phần II: Đúng - Sai
+      if (msqQ.length > 0) {
+        fileContent += "PHẦN II: Đúng - Sai\n\n";
+        msqQ.forEach((q, idx) => {
+          fileContent += `Câu ${mcqQ.length + idx + 1}: ${q.question}\n`;
+          fileContent += `  a) ${q.option_a || ''}\n`;
+          fileContent += `  b) ${q.option_b || ''}\n`;
+          fileContent += `  c) ${q.option_c || ''}\n`;
+          fileContent += `  d) ${q.option_d || ''}\n\n`;
+        });
+      }
+
+      // Phần III: Trả lời ngắn
+      if (saQ.length > 0) {
+        fileContent += "PHẦN III: Trả lời ngắn\n\n";
+        saQ.forEach((q, idx) => {
+          fileContent += `Câu ${mcqQ.length + msqQ.length + idx + 1}: ${q.question}\n`;
+          fileContent += `  Đáp án: ________________\n\n`;
+        });
+      }
+
+      // Đáp án & lời giải
+      fileContent += "\n\n--- PHẦN ĐÁP ÁN & LỜI GIẢI ---\n\n";
+      let allQuestions = [...mcqQ, ...msqQ, ...saQ];
+      allQuestions.forEach((q, i) => {
+        fileContent += `Câu ${i + 1}:\n`;
+        fileContent += `  Đề bài: ${q.question}\n`;
+        fileContent += `  Đáp án đúng: ${q.correct_option}\n`;
+        fileContent += `  Giải thích: ${q.explanation}\n\n`;
+      });
+
+      const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `de-thi-tong-hop-${d}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    setShowPrintDialog(false);
+    };
 
   const handleOnlineExam = () => {
-    if (selectedQuestions.length === 0) return;
-    const questionsForExam = selectedQuestions
-        .map(id => allLoadedQuestions[id])
-        .filter((q): q is Question => q !== undefined);
-        
-    if (questionsForExam.length === 0) return;
+  if (selectedQuestions.length === 0) return;
+  const questionsForExam = selectedQuestions
+    .map(id => allLoadedQuestions[id])
+    .filter((q): q is Question => q !== undefined);
+  if (questionsForExam.length === 0) return;
 
-    navigate('/exam', { state: { questions: questionsForExam, title: "Đề thi tổng hợp" } });
+  // Chia nhóm câu hỏi
+  let mcq = questionsForExam.filter(q => q.type === 'mcq');
+  let msq = questionsForExam.filter(q => q.type === 'msq');
+  let sa = questionsForExam.filter(q => q.type === 'sa');
+
+  // Trộn câu hỏi từng loại nếu chọn
+  let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
+  let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
+  let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
+
+  const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
+
+  navigate('/exam', { state: { questions: shuffledQuestions, title: "Đề thi tổng hợp" } });
   };
+  
   
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
@@ -170,18 +277,20 @@ const QuizBankPage: React.FC = () => {
 
     return (
       <div>
-        <div className="md:flex md:items-center md:justify-between mb-6">
-            <h2 className="text-3xl font-bold text-gray-900 truncate" title={quizData.title}>{quizData.title}</h2>
-            <div className="mt-4 md:mt-0 flex items-center gap-3 flex-shrink-0">
-                <button onClick={handleOfflineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
-                    <PrinterIcon className="w-5 h-5"/>
-                    <span>Tải đề .txt ({selectedQuestions.length})</span>
-                </button>
-                <button onClick={handleOnlineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm">
-                    <PlayCircleIcon className="w-5 h-5"/>
-                    <span>Thi Online ({selectedQuestions.length})</span>
-                </button>
-            </div>
+        <div className="relative mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 truncate pr-40" title={quizData.title}>{quizData.title}</h2>
+          <div className="absolute top-0 right-0 flex items-center gap-2">
+            <button onClick={handleOfflineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
+              <PrinterIcon className="w-4 h-4"/>
+              <span>Tải đề</span>
+              <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-bold">{selectedQuestions.length}</span>
+            </button>
+            <button onClick={handleOnlineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm">
+              <PlayCircleIcon className="w-4 h-4"/>
+              <span>Thi Online</span>
+              <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded text-[10px] font-bold">{selectedQuestions.length}</span>
+            </button>
+          </div>
         </div>
         
         {renderTabs()}
@@ -219,13 +328,62 @@ const QuizBankPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full bg-gray-50">
-      <Sidebar onSelectLesson={fetchLessonData} activeLessonPath={activeLesson} />
-      <main className="flex-1 p-6 sm:p-8 lg:p-10 overflow-y-auto">
+    <div className="flex h-full bg-gray-50 relative">
+      {/* Popup in đề */}
+      {showPrintDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">Tùy chọn in đề</h2>
+            <div className="mb-3">
+              <label className="block font-medium mb-1">Số đề cần in:</label>
+              <input type="number" min={1} max={20} value={printCount} onChange={e => setPrintCount(Number(e.target.value))} className="w-full border rounded px-2 py-1" />
+            </div>
+            <div className="mb-3 flex items-center gap-2">
+              <input type="checkbox" id="shuffleQuestions" checked={shuffleQuestions} onChange={e => setShuffleQuestions(e.target.checked)} />
+              <label htmlFor="shuffleQuestions">Trộn câu hỏi (chỉ trộn trong từng loại)</label>
+            </div>
+            <div className="mb-3 flex items-center gap-2">
+              <input type="checkbox" id="shuffleMcqOptions" checked={shuffleMcqOptions} onChange={e => setShuffleMcqOptions(e.target.checked)} />
+              <label htmlFor="shuffleMcqOptions">Trộn đáp án phần I (Trắc nghiệm)</label>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 font-semibold" onClick={() => setShowPrintDialog(false)}>Hủy</button>
+              <button className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700" onClick={handlePrintConfirm}>In đề</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Sidebar: ẩn trên mobile, hiện trên tablet trở lên */}
+      <div className="hidden md:block">
+        <Sidebar onSelectLesson={fetchLessonData} activeLessonPath={activeLesson} />
+      </div>
+      {/* Sidebar overlay trên mobile */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex md:hidden">
+          <div className="w-72 bg-white border-r border-gray-200 p-0 h-full overflow-y-auto relative">
+            <button
+              className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 text-2xl font-bold"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Đóng menu"
+            >×</button>
+            <Sidebar onSelectLesson={(path) => { fetchLessonData(path); setSidebarOpen(false); }} activeLessonPath={activeLesson} />
+          </div>
+          <div className="flex-1" onClick={() => setSidebarOpen(false)}></div>
+        </div>
+      )}
+      {/* Nút mở Sidebar trên mobile */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-white border border-gray-300 rounded-full p-2 shadow-lg hover:bg-indigo-50"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Mở menu"
+      >
+        <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      {/* Main content: chiếm toàn bộ màn hình trên mobile */}
+      <main className="flex-1 p-4 sm:p-8 lg:p-10 overflow-y-auto">
         {renderContent()}
       </main>
     </div>
   );
-};
-
+}
 export default QuizBankPage;
