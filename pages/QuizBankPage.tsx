@@ -64,18 +64,6 @@ const QuizBankPage: React.FC = () => {
   }, [activeLesson, selectedQuestions, lessonSelectedQuestions]);
   
   useEffect(() => {
-    // Lưu trạng thái chọn câu hỏi khi component unmount
-    return () => {
-      if (activeLesson && selectedQuestions.length > 0) {
-        setLessonSelectedQuestions(prev => ({
-          ...prev,
-          [activeLesson]: selectedQuestions
-        }));
-      }
-    };
-  }, [activeLesson, selectedQuestions]);
-  
-  useEffect(() => {
     fetchLessonData(activeLesson);
   }, [fetchLessonData, activeLesson]);
 
@@ -141,7 +129,7 @@ const QuizBankPage: React.FC = () => {
   // Sinh đề và in file
   const handlePrintConfirm = () => {
     const questionsToPrint = selectedQuestions
-      .map(id => allLoadedQuestions[activeLesson]?.[id])
+      .map(id => Object.values(allLoadedQuestions).flat().find(q => q && q.id === id))
       .filter((q): q is Question => q !== undefined);
     if (questionsToPrint.length === 0) return;
 
@@ -256,7 +244,7 @@ const QuizBankPage: React.FC = () => {
   const handleOnlineExam = () => {
   if (selectedQuestions.length === 0) return;
   const questionsForExam = selectedQuestions
-    .map(id => allLoadedQuestions[activeLesson]?.[id])
+    .map(id => Object.values(allLoadedQuestions).flat().find(q => q && q.id === id))
     .filter((q): q is Question => q !== undefined);
   if (questionsForExam.length === 0) return;
 
