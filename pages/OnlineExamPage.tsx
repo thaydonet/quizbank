@@ -21,6 +21,8 @@ const OnlineExamPage: React.FC = () => {
   const [title, setTitle] = useState<string>('Đề thi Online');
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [studentName, setStudentName] = useState<string>('');
+  const [studentClass, setStudentClass] = useState<string>('');
   
   // Trộn mảng
   function shuffleArray(array: any[]) {
@@ -102,6 +104,8 @@ const OnlineExamPage: React.FC = () => {
       setTitle(location.state.title);
       setUserAnswers({});
       setIsSubmitted(false);
+      setStudentName('');
+      setStudentClass('');
       window.scrollTo(0, 0);
     } else {
       navigate('/');
@@ -115,11 +119,29 @@ const OnlineExamPage: React.FC = () => {
   const handleAnswerChange = (questionUniqueId: string, answer: string, type: 'mcq' | 'sa' | 'msq') => {
     if (isSubmitted) return;
     if (type === 'msq') {
-        const currentAnswers = (userAnswers[questionUniqueId] || '').split(',').filter(Boolean);
-        const newAnswers = currentAnswers.includes(answer)
-            ? currentAnswers.filter(a => a !== answer)
-            : [...currentAnswers, answer];
-        setUserAnswers(prev => ({ ...prev, [questionUniqueId]: newAnswers.sort().join(',') }));
+        // MSQ với định dạng a:true,b:false,c:true,d:false
+        const currentAnswers = userAnswers[questionUniqueId] || '';
+        const answerMap: {[key: string]: string} = {};
+        
+        // Parse current answers
+        if (currentAnswers) {
+          currentAnswers.split(',').forEach(item => {
+            const [key, value] = item.split(':');
+            if (key && value) answerMap[key] = value;
+          });
+        }
+        
+        // Parse new answer (format: "a:true" or "b:false")
+        const [optionKey, value] = answer.split(':');
+        answerMap[optionKey] = value;
+        
+        // Convert back to string format
+        const newAnswerString = Object.keys(answerMap)
+          .sort()
+          .map(key => `${key}:${answerMap[key]}`)
+          .join(',');
+        
+        setUserAnswers(prev => ({ ...prev, [questionUniqueId]: newAnswerString }));
     } else {
         setUserAnswers(prev => ({ ...prev, [questionUniqueId]: answer }));
     }
@@ -133,30 +155,84 @@ const OnlineExamPage: React.FC = () => {
   };
 
   const getScore = () => {
-    return questions.reduce((score, q) => {
-        const userAnswer = userAnswers[q.uniqueId] || '';
-        if (q.type === 'msq') {
-            const correct = q.correct_option.split(',').sort().join(',');
-            if (userAnswer === correct) return score + 1;
-        } else if (q.type === 'sa') {
-            const correctAnswers = q.correct_option.split(';').map(a => a.trim().toLowerCase());
-            if (correctAnswers.includes(userAnswer.trim().toLowerCase())) return score + 1;
-        } else { // mcq
-            if (userAnswer === q.correct_option) return score + 1;
+    let totalScore = 0;
+    
+    questions.forEach(q => {
+      const userAnswer = userAnswers[q.uniqueId] || '';
+      
+      if (q.type === 'mcq') {
+        // MCQ: 0.25 điểm nếu đúng
+        if (userAnswer === q.correct_option) {
+          totalScore += 0.25;
         }
-        return score;
-    }, 0);
+      } else if (q.type === 'msq') {
+        // MSQ: 0.25 điểm cho mỗi đáp án đúng
+        const correctAnswers = q.correct_option.split(',').map(x => x.trim().toLowerCase());
+        const userAnswerMap: {[key: string]: string} = {};
+        
+        if (userAnswer) {
+          userAnswer.split(',').forEach(item => {
+            const [key, value] = item.split(':');
+            if (key && value) userAnswerMap[key.trim().toLowerCase()] = value;
+          });
+        }
+        
+        // Kiểm tra từng đáp án a, b, c, d
+        ['a', 'b', 'c', 'd'].forEach(option => {
+          const isCorrectlyAnswered = correctAnswers.includes(option);
+          const userAnsweredTrue = userAnswerMap[option] === 'true';
+          
+          // Đúng khi: (đáp án đúng và chọn true) hoặc (đáp án sai và chọn false hoặc không chọn)
+          if ((isCorrectlyAnswered && userAnsweredTrue) || (!isCorrectlyAnswered && !userAnsweredTrue)) {
+            totalScore += 0.25;
+          }
+        });
+      } else if (q.type === 'sa') {
+        // SA: 0.5 điểm nếu đúng
+        const correctAnswers = q.correct_option.split(';').map(a => a.trim().toLowerCase());
+        if (correctAnswers.includes(userAnswer.trim().toLowerCase())) {
+          totalScore += 0.5;
+        }
+      }
+    });
+    
+    return totalScore;
+  };
+
+  const getMaxScore = () => {
+    let maxScore = 0;
+    questions.forEach(q => {
+      if (q.type === 'mcq') maxScore += 0.25;
+      else if (q.type === 'msq') maxScore += 1.0; // 4 đáp án x 0.25
+      else if (q.type === 'sa') maxScore += 0.5;
+    });
+    return maxScore;
   };
   
-  const getResultClasses = (q: QuestionWithUniqueId, optionKey: string) => {
-    const correctOptions = q.correct_option.split(',');
-    const userChoice = (userAnswers[q.uniqueId] || '').split(',');
-    
-    const isCorrect = correctOptions.includes(optionKey);
-    const isUserSelected = userChoice.includes(optionKey);
-
-    if (isCorrect) return 'bg-green-100 border-green-400 ring-2 ring-green-300';
-    if (isUserSelected && !isCorrect) return 'bg-red-100 border-red-400';
+  const getResultClasses = (q: QuestionWithUniqueId, optionKey: string, isTrue: boolean) => {
+    if (q.type === 'msq') {
+      const correctOptions = q.correct_option.split(',').map(x => x.trim().toLowerCase());
+      const userAnswer = userAnswers[q.uniqueId] || '';
+      const userAnswerMap: {[key: string]: string} = {};
+      
+      if (userAnswer) {
+        userAnswer.split(',').forEach(item => {
+          const [key, value] = item.split(':');
+          if (key && value) userAnswerMap[key.trim().toLowerCase()] = value;
+        });
+      }
+      
+      const isCorrectAnswer = correctOptions.includes(optionKey.toLowerCase());
+      const userSelected = userAnswerMap[optionKey.toLowerCase()] === (isTrue ? 'true' : 'false');
+      
+      // Đúng khi: (là đáp án đúng và chọn Đúng) hoặc (không phải đáp án đúng và chọn Sai)
+      const isCorrectChoice = (isCorrectAnswer && isTrue) || (!isCorrectAnswer && !isTrue);
+      
+      if (isCorrectChoice && userSelected) return 'bg-green-100 border-green-400 ring-2 ring-green-300';
+      if (!isCorrectChoice && userSelected) return 'bg-red-100 border-red-400';
+      if (isCorrectChoice && !userSelected) return 'bg-yellow-100 border-yellow-400'; // Đáp án đúng nhưng không chọn
+      return 'bg-gray-100 border-gray-200';
+    }
     return 'bg-gray-100 border-gray-200';
   };
   
@@ -175,20 +251,56 @@ const OnlineExamPage: React.FC = () => {
   }
 
   const score = getScore();
-  const percentage = questions.length > 0 ? (score / questions.length) * 100 : 0;
+  const maxScore = getMaxScore();
+  const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
 
   return (
     <div className="bg-gray-50 min-h-full">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8">
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">{title}</h1>
-          <p className="text-center text-gray-500 mb-8">Số câu: {questions.length}</p>
+          <p className="text-center text-gray-500 mb-6">Số câu: {questions.length}</p>
+
+          {/* Thông tin học sinh */}
+          {!isSubmitted && (
+            <div className="mb-8 p-6 rounded-xl bg-blue-50 border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-800 mb-4">Thông tin học sinh (không bắt buộc)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên:</label>
+                  <input
+                    type="text"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Nhập họ và tên"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lớp:</label>
+                  <input
+                    type="text"
+                    value={studentClass}
+                    onChange={(e) => setStudentClass(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Nhập lớp"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {isSubmitted && (
             <div className="mb-10 p-6 rounded-xl bg-indigo-50 border border-indigo-200 text-center">
-              <h2 className="text-2xl font-bold text-indigo-800">KẾT QUẢ BÀI LÀM</h2>
+              <h2 className="text-2xl font-bold text-indigo-800 mb-4">KẾT QUẢ BÀI LÀM</h2>
+              {(studentName || studentClass) && (
+                <div className="mb-4 text-lg text-gray-700">
+                  {studentName && <p><strong>Họ tên:</strong> {studentName}</p>}
+                  {studentClass && <p><strong>Lớp:</strong> {studentClass}</p>}
+                </div>
+              )}
               <p className="text-5xl font-bold my-3" style={{ color: percentage >= 50 ? '#10B981' : '#EF4444' }}>
-                {score} / {questions.length}
+                {score.toFixed(2)} / {maxScore.toFixed(2)}
               </p>
               <p className="text-lg text-gray-600">({percentage.toFixed(2)}% chính xác)</p>
             </div>
@@ -204,7 +316,7 @@ const OnlineExamPage: React.FC = () => {
               <>
                 {mcq.length > 0 && (
                   <div className="mb-8">
-                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần I: Trắc nghiệm</h2>
+                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần I: Trắc nghiệm (0.25 điểm/câu)</h2>
                     {mcq.map((q) => {
                       const userAnswer = userAnswers[q.uniqueId] || '';
                       let isCorrect = false;
@@ -213,7 +325,7 @@ const OnlineExamPage: React.FC = () => {
                       return (
                         <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
+                            <div className="flex-shrink-0 font-bold text-blue-600 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
                             {isSubmitted && (isCorrect ? <CheckCircleIcon className="w-7 h-7 text-green-500 flex-shrink-0" /> : <XCircleIcon className="w-7 h-7 text-red-500 flex-shrink-0" />)}
                           </div>
@@ -261,47 +373,92 @@ const OnlineExamPage: React.FC = () => {
                 )}
                 {msq.length > 0 && (
                   <div className="mb-8">
-                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần II: Đúng - Sai</h2>
+                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần II: Đúng - Sai (0.25 điểm/đáp án)</h2>
                     {msq.map((q) => {
                       const userAnswer = userAnswers[q.uniqueId] || '';
-                      let isCorrect = false;
-                      if (isSubmitted) isCorrect = userAnswer === q.correct_option.split(',').map(x=>x.trim().toLowerCase()).sort().join(',');
                       const correctOptions = q.correct_option.split(',').map(x=>x.trim().toLowerCase());
-                      const userOptions = userAnswer.split(',').map(x=>x.trim().toLowerCase());
+                      const userAnswerMap: {[key: string]: string} = {};
+                      
+                      if (userAnswer) {
+                        userAnswer.split(',').forEach(item => {
+                          const [key, value] = item.split(':');
+                          if (key && value) userAnswerMap[key.trim().toLowerCase()] = value;
+                        });
+                      }
+
+                      // Tính điểm cho câu MSQ này
+                      let questionScore = 0;
+                      if (isSubmitted) {
+                        ['a', 'b', 'c', 'd'].forEach(option => {
+                          const isCorrectlyAnswered = correctOptions.includes(option);
+                          const userAnsweredTrue = userAnswerMap[option] === 'true';
+                          if ((isCorrectlyAnswered && userAnsweredTrue) || (!isCorrectlyAnswered && !userAnsweredTrue)) {
+                            questionScore += 0.25;
+                          }
+                        });
+                      }
+
                       const number = idx++;
                       return (
                         <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
+                            <div className="flex-shrink-0 font-bold text-blue-600 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
-                            {isSubmitted && (isCorrect ? <CheckCircleIcon className="w-7 h-7 text-green-500 flex-shrink-0" /> : <XCircleIcon className="w-7 h-7 text-red-500 flex-shrink-0" />)}
+                            {isSubmitted && (
+                              <div className="flex-shrink-0 flex items-center gap-2">
+                                <span className="text-sm font-semibold" style={{ color: questionScore === 1.0 ? '#10B981' : questionScore > 0 ? '#F59E0B' : '#EF4444' }}>
+                                  {questionScore.toFixed(2)}/1.00
+                                </span>
+                                {questionScore === 1.0 ? <CheckCircleIcon className="w-7 h-7 text-green-500" /> : <XCircleIcon className="w-7 h-7 text-red-500" />}
+                              </div>
+                            )}
                           </div>
-                          <div className="mt-5 pl-10 space-y-3">
+                          <div className="mt-5 pl-10 space-y-4">
                             {['a', 'b', 'c', 'd'].map(key => {
                               const optionKey = `option_${key}` as keyof Question;
                               if (!q[optionKey]) return null;
-                              // Đánh dấu đúng/sai cho từng đáp án
-                              let optionClass = 'bg-white';
-                              if (!isSubmitted && userOptions.includes(key)) optionClass = 'bg-indigo-100 border-indigo-400';
-                              if (isSubmitted && correctOptions.includes(key)) optionClass = 'bg-green-100 border-green-400 ring-2 ring-green-300';
-                              if (isSubmitted && userOptions.includes(key) && !correctOptions.includes(key)) optionClass = 'bg-red-100 border-red-400';
+                              
+                              const userSelectedTrue = userAnswerMap[key] === 'true';
+                              const userSelectedFalse = userAnswerMap[key] === 'false';
+                              
                               return (
-                                <label key={`${q.uniqueId}_${key}`} className={`flex items-center p-3.5 rounded-lg border transition-all duration-200 ${optionClass}`}>
-                                  <input 
-                                    type="checkbox" 
-                                    name={q.uniqueId} 
-                                    value={key} 
-                                    onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'msq')} 
-                                    disabled={isSubmitted} 
-                                    checked={userOptions.includes(key)} 
-                                    className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"
-                                  />
-                                  <span className="ml-3 flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold">{key})</span>
-                                    <MathContent content={q[optionKey] as string} />
-                                  </span>
-                                </label>
-                              )
+                                <div key={`${q.uniqueId}_${key}`} className="border rounded-lg p-4 bg-white">
+                                  <div className="mb-3">
+                                    <span className="font-bold text-gray-700">{key})</span>
+                                    <span className="ml-2 text-gray-800"><MathContent content={q[optionKey] as string} /></span>
+                                  </div>
+                                  <div className="flex gap-4 ml-6">
+                                    <label className={`flex items-center p-2 rounded border transition-all duration-200 ${
+                                      isSubmitted ? getResultClasses(q, key, true) : (userSelectedTrue ? 'bg-indigo-100 border-indigo-400' : 'bg-white hover:bg-gray-50')
+                                    }`}>
+                                      <input
+                                        type="radio"
+                                        name={`${q.uniqueId}_${key}`}
+                                        value={`${key}:true`}
+                                        onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'msq')}
+                                        disabled={isSubmitted}
+                                        checked={userSelectedTrue}
+                                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                                      />
+                                      <span className="ml-2 text-green-700 font-semibold">Đúng</span>
+                                    </label>
+                                    <label className={`flex items-center p-2 rounded border transition-all duration-200 ${
+                                      isSubmitted ? getResultClasses(q, key, false) : (userSelectedFalse ? 'bg-indigo-100 border-indigo-400' : 'bg-white hover:bg-gray-50')
+                                    }`}>
+                                      <input
+                                        type="radio"
+                                        name={`${q.uniqueId}_${key}`}
+                                        value={`${key}:false`}
+                                        onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'msq')}
+                                        disabled={isSubmitted}
+                                        checked={userSelectedFalse}
+                                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                                      />
+                                      <span className="ml-2 text-red-700 font-semibold">Sai</span>
+                                    </label>
+                                  </div>
+                                </div>
+                              );
                             })}
                           </div>
                           {isSubmitted && (
@@ -320,7 +477,7 @@ const OnlineExamPage: React.FC = () => {
                 )}
                 {sa.length > 0 && (
                   <div className="mb-8">
-                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần III: Trả lời ngắn</h2>
+                    <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần III: Trả lời ngắn (0.5 điểm/câu)</h2>
                     {sa.map((q) => {
                       const userAnswer = userAnswers[q.uniqueId] || '';
                       let isCorrect = false;
@@ -333,7 +490,7 @@ const OnlineExamPage: React.FC = () => {
                       return (
                         <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
+                            <div className="flex-shrink-0 font-bold text-blue-600 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
                             {isSubmitted && (isCorrect ? <CheckCircleIcon className="w-7 h-7 text-green-500 flex-shrink-0" /> : <XCircleIcon className="w-7 h-7 text-red-500 flex-shrink-0" />)}
                           </div>
