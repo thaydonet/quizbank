@@ -16,7 +16,8 @@ const QuizBankPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<string>('toan-12-bai-1');
   
-  // Global selections - lưu tất cả câu hỏi đã chọn từ mọi bài học
+  // Global selections - lưu tất cả câu hỏi đã chọn từ mọi bài học 
+  // Format: "lessonPath:questionId" để tránh trùng ID giữa các bài
   const [globalSelectedQuestions, setGlobalSelectedQuestions] = useState<string[]>([]);
   
   // Lưu trữ tất cả câu hỏi đã load từ mọi bài học
@@ -25,6 +26,17 @@ const QuizBankPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Function để tạo unique key cho question (lesson:questionId)
+  const createQuestionKey = useCallback((lessonPath: string, questionId: string) => {
+    return `${lessonPath}:${questionId}`;
+  }, []);
+
+  // Function để parse question key thành lesson và questionId
+  const parseQuestionKey = useCallback((key: string) => {
+    const [lessonPath, questionId] = key.split(':');
+    return { lessonPath, questionId };
+  }, []);
 
   // Function để lấy tất cả questions đã load
   const getAllLoadedQuestionsFlat = useCallback((): Question[] => {
@@ -78,16 +90,18 @@ const QuizBankPage: React.FC = () => {
 
   // Handler để select/deselect question - áp dụng cho global selection
   const handleSelectQuestion = useCallback((id: string) => {
+    const questionKey = createQuestionKey(activeLesson, id);
+    
     setGlobalSelectedQuestions(prev => {
-      if (prev.includes(id)) {
+      if (prev.includes(questionKey)) {
         // Bỏ chọn
-        return prev.filter(qid => qid !== id);
+        return prev.filter(key => key !== questionKey);
       } else {
         // Thêm vào chọn
-        return [...prev, id];
+        return [...prev, questionKey];
       }
     });
-  }, []);
+  }, [activeLesson, createQuestionKey]);
   
   // Filter questions theo tab hiện tại (chỉ trong lesson hiện tại)
   const filteredQuestions = useMemo(() => {
@@ -120,9 +134,17 @@ const QuizBankPage: React.FC = () => {
   const selectedCountsInCurrentLesson = useMemo(() => {
     if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
     
-    const currentLessonSelectedIds = globalSelectedQuestions.filter(id => 
-      quizData.questions.some(q => q.id === id)
-    );
+    // Lọc ra những key thuộc lesson hiện tại
+    const currentLessonSelectedKeys = globalSelectedQuestions.filter(key => {
+      const { lessonPath } = parseQuestionKey(key);
+      return lessonPath === activeLesson;
+    });
+    
+    // Lấy questionIds từ keys
+    const currentLessonSelectedIds = currentLessonSelectedKeys.map(key => {
+      const { questionId } = parseQuestionKey(key);
+      return questionId;
+    });
     
     const selectedQuestions = quizData.questions.filter(q => 
       currentLessonSelectedIds.includes(q.id)
@@ -134,32 +156,34 @@ const QuizBankPage: React.FC = () => {
       msq: selectedQuestions.filter(q => q.type === 'msq').length,
       sa: selectedQuestions.filter(q => q.type === 'sa').length
     };
-  }, [quizData, globalSelectedQuestions]);
+  }, [quizData, globalSelectedQuestions, activeLesson, parseQuestionKey]);
 
   // Handle select all cho lesson hiện tại và tab hiện tại
   const handleSelectAll = useCallback(() => {
     const filteredIds = filteredQuestions.map(q => q.id);
-    const allFilteredSelected = filteredIds.length > 0 && 
-      filteredIds.every(id => globalSelectedQuestions.includes(id));
+    const filteredKeys = filteredIds.map(id => createQuestionKey(activeLesson, id));
+    
+    const allFilteredSelected = filteredKeys.length > 0 && 
+      filteredKeys.every(key => globalSelectedQuestions.includes(key));
     
     if (allFilteredSelected) {
       // Bỏ chọn tất cả câu hỏi trong tab hiện tại
       setGlobalSelectedQuestions(prev => 
-        prev.filter(id => !filteredIds.includes(id))
+        prev.filter(key => !filteredKeys.includes(key))
       );
     } else {
       // Chọn tất cả câu hỏi trong tab hiện tại
       setGlobalSelectedQuestions(prev => {
         const newSelections = [...prev];
-        filteredIds.forEach(id => {
-          if (!newSelections.includes(id)) {
-            newSelections.push(id);
+        filteredKeys.forEach(key => {
+          if (!newSelections.includes(key)) {
+            newSelections.push(key);
           }
         });
         return newSelections;
       });
     }
-  }, [filteredQuestions, globalSelectedQuestions]);
+  }, [filteredQuestions, globalSelectedQuestions, activeLesson, createQuestionKey]);
   
   const handleOfflineExam = useCallback(() => {
     if (globalSelectedQuestions.length === 0) return;
@@ -179,8 +203,13 @@ const QuizBankPage: React.FC = () => {
   // Sinh đề và in file - sử dụng global selections
   const handlePrintConfirm = useCallback(() => {
     const allQuestionsFlat = getAllLoadedQuestionsFlat();
+    
+    // Parse keys để lấy questions
     const questionsToPrint = globalSelectedQuestions
-      .map(id => allQuestionsFlat.find(q => q.id === id))
+      .map(key => {
+        const { lessonPath, questionId } = parseQuestionKey(key);
+        return allLoadedQuestions[lessonPath]?.[questionId];
+      })
       .filter((q): q is Question => q !== undefined);
       
     if (questionsToPrint.length === 0) return;
@@ -299,15 +328,20 @@ const QuizBankPage: React.FC = () => {
       URL.revokeObjectURL(url);
     }
     setShowPrintDialog(false);
-  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, printCount, shuffleQuestions, shuffleMcqOptions]);
+  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, allLoadedQuestions, parseQuestionKey, printCount, shuffleQuestions, shuffleMcqOptions]);
 
   // Thi online - sử dụng global selections
   const handleOnlineExam = useCallback(() => {
     if (globalSelectedQuestions.length === 0) return;
-    const allQuestionsFlat = getAllLoadedQuestionsFlat();
+    
+    // Parse keys để lấy questions
     const questionsForExam = globalSelectedQuestions
-      .map(id => allQuestionsFlat.find(q => q.id === id))
+      .map(key => {
+        const { lessonPath, questionId } = parseQuestionKey(key);
+        return allLoadedQuestions[lessonPath]?.[questionId];
+      })
       .filter((q): q is Question => q !== undefined);
+      
     if (questionsForExam.length === 0) return;
 
     // Chia nhóm câu hỏi
@@ -323,7 +357,7 @@ const QuizBankPage: React.FC = () => {
     const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
 
     navigate('/exam', { state: { questions: shuffledQuestions, title: "Đề thi tổng hợp" } });
-  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, shuffleQuestions, navigate]);
+  }, [globalSelectedQuestions, allLoadedQuestions, parseQuestionKey, shuffleQuestions, navigate]);
 
   // Function để clear tất cả selections
   const handleClearAllSelections = useCallback(() => {
@@ -336,8 +370,9 @@ const QuizBankPage: React.FC = () => {
     if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500 py-16">Không có câu hỏi nào cho bài học này.</div>;
 
     const filteredIds = filteredQuestions.map(q => q.id);
-    const allInViewSelected = filteredIds.length > 0 && 
-      filteredIds.every(id => globalSelectedQuestions.includes(id));
+    const filteredKeys = filteredIds.map(id => createQuestionKey(activeLesson, id));
+    const allInViewSelected = filteredKeys.length > 0 && 
+      filteredKeys.every(key => globalSelectedQuestions.includes(key));
 
     const renderTabs = () => (
       <div className="border-b border-gray-200 mb-6">
@@ -436,15 +471,18 @@ const QuizBankPage: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-            {filteredQuestions.map((q) => (
-              <QuestionCard 
-                key={q.id} 
-                question={q} 
-                index={quizData.questions.findIndex(origQ => origQ.id === q.id)}
-                isSelected={globalSelectedQuestions.includes(q.id)}
-                onSelect={handleSelectQuestion}
-                />
-            ))}
+            {filteredQuestions.map((q) => {
+              const questionKey = createQuestionKey(activeLesson, q.id);
+              return (
+                <QuestionCard 
+                  key={q.id} 
+                  question={q} 
+                  index={quizData.questions.findIndex(origQ => origQ.id === q.id)}
+                  isSelected={globalSelectedQuestions.includes(questionKey)}
+                  onSelect={handleSelectQuestion}
+                  />
+              );
+            })}
              {filteredQuestions.length === 0 && <p className="text-center text-gray-500 py-12">Không có câu hỏi loại này.</p>}
         </div>
       </div>
