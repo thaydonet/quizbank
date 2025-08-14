@@ -55,18 +55,36 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
     }
   };
   
+  // Sửa lại: Đơn giản hóa logic xử lý click
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      // Prevent click event from firing when the button is clicked, but allow checkbox clicks
-      const target = e.target as HTMLElement;
-      if (target.closest('button') && !target.closest('input[type="checkbox"]')) {
-        return;
-      }
-      onSelect(question.id);
+    const target = e.target as HTMLElement;
+    
+    // Ngăn click khi click vào button "Xem đáp án" hoặc checkbox
+    if (target.closest('button') || target.closest('input[type="checkbox"]')) {
+      return;
+    }
+    
+    onSelect(question.id);
   };
   
+  // Xử lý click button riêng biệt
   const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     setShowAnswer(!showAnswer);
+  };
+
+  // Xử lý click checkbox riêng biệt
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    onSelect(question.id);
+  };
+
+  // Sửa lại keyboard handler
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      onSelect(question.id);
+    }
   };
 
   return (
@@ -75,19 +93,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
       className={`bg-white p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isSelected ? 'border-indigo-500 shadow-md' : 'border-transparent hover:border-indigo-300 shadow-sm'}`}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') handleCardClick(e as any) }}
+      onKeyDown={handleKeyDown}
+      aria-label={`Câu hỏi ${index + 1}`}
     >
       <div className="flex justify-between items-start mb-4">
           <div className="flex items-start gap-4 flex-grow">
             <input
               type="checkbox"
               checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onSelect(question.id);
-              }}
+              onChange={handleCheckboxChange}
               className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 mr-2"
-              aria-label="Chọn câu hỏi"
+              aria-label={`Chọn câu hỏi ${index + 1}`}
             />
             <p className="font-semibold text-gray-900 flex-grow">
               <span className="text-indigo-600 mr-2">{`Câu ${index + 1}:`}</span>
