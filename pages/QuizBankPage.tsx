@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import QuestionCard from '../components/QuestionCard';
@@ -22,19 +22,38 @@ const QuizBankPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Ref để track lesson hiện tại khi save selections
+  const currentLessonRef = useRef<string>(activeLesson);
+
+  // Update ref khi activeLesson thay đổi
+  useEffect(() => {
+    currentLessonRef.current = activeLesson;
+  }, [activeLesson]);
+
+  // Tách riêng function lưu selections
+  const saveCurrentSelections = useCallback(() => {
+    const currentLesson = currentLessonRef.current;
+    if (currentLesson && selectedQuestions.length > 0) {
+      setLessonSelectedQuestions(prev => ({
+        ...prev,
+        [currentLesson]: [...selectedQuestions] // Clone array để tránh reference issues
+      }));
+    }
+  }, [selectedQuestions]);
+
+  // Sửa lại fetchLessonData để tránh dependency cycle
   const fetchLessonData = useCallback(async (path: string) => {
-  setIsLoading(true);
-  setError(null);
-  
-  // Lưu trạng thái chọn câu hỏi của bài hiện tại trước khi chuyển
-  if (activeLesson && selectedQuestions.length > 0) {
-    setLessonSelectedQuestions(prev => ({
-      ...prev,
-      [activeLesson]: selectedQuestions
-    }));
-  }
-  
-  setActiveLesson(path);
+    setIsLoading(true);
+    setError(null);
+    
+    // Lưu trạng thái chọn câu hỏi của bài hiện tại trước khi chuyển
+    // Chỉ lưu nếu không phải lần đầu load và có selections
+    if (currentLessonRef.current !== path) {
+      saveCurrentSelections();
+    }
+    
+    setActiveLesson(path);
+    
     try {
       const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
       if (!response.ok) {
@@ -50,24 +69,40 @@ const QuizBankPage: React.FC = () => {
       }));
       
       // Khôi phục trạng thái chọn câu hỏi của bài này
-      const savedSelections = lessonSelectedQuestions[path] || [];
-      setSelectedQuestions(savedSelections.filter(id => 
-        data.questions.some(q => q.id === id)
-      ));
+      // Sử dụng functional update để đảm bảo có state mới nhất
+      setLessonSelectedQuestions(prevLessonSelections => {
+        const savedSelections = prevLessonSelections[path] || [];
+        const validSelections = savedSelections.filter(id => 
+          data.questions.some(q => q.id === id)
+        );
+        setSelectedQuestions(validSelections);
+        return prevLessonSelections;
+      });
+      
     } catch (err) {
       if (err instanceof Error) setError(err.message);
       else setError('Đã xảy ra lỗi không xác định.');
       setQuizData(null);
+      setSelectedQuestions([]); // Clear selections nếu có lỗi
     } finally {
       setIsLoading(false);
     }
-  }, [activeLesson, selectedQuestions, lessonSelectedQuestions]);
-  
+  }, [saveCurrentSelections]); // Chỉ depend on saveCurrentSelections
+
+  // Effect để load lesson đầu tiên
   useEffect(() => {
     fetchLessonData(activeLesson);
-  }, [fetchLessonData, activeLesson]);
+  }, []); // Chỉ chạy một lần khi mount
 
-  const handleSelectQuestion = (id: string) => {
+  // Effect để save selections khi component unmount hoặc activeLesson thay đổi
+  useEffect(() => {
+    return () => {
+      // Cleanup: save selections khi component unmount
+      saveCurrentSelections();
+    };
+  }, [saveCurrentSelections]);
+
+  const handleSelectQuestion = useCallback((id: string) => {
     setSelectedQuestions(prev => {
       // Nếu đã chọn thì bỏ chọn, nếu chưa thì thêm vào
       if (prev.includes(id)) {
@@ -76,7 +111,7 @@ const QuizBankPage: React.FC = () => {
         return [...prev, id];
       }
     });
-  };
+  }, []);
   
   const filteredQuestions = useMemo(() => {
     if (!quizData) return [];
@@ -103,21 +138,34 @@ const QuizBankPage: React.FC = () => {
       };
   }, [quizData]);
 
-  const handleSelectAll = () => {
-    if (selectedQuestions.length === filteredQuestions.length) {
-      setSelectedQuestions(prev => prev.filter(id => !filteredQuestions.some(q => q.id === id)));
+  const handleSelectAll = useCallback(() => {
+    const filteredIds = filteredQuestions.map(q => q.id);
+    const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedQuestions.includes(id));
+    
+    if (allFilteredSelected) {
+      // Bỏ chọn tất cả câu hỏi trong tab hiện tại
+      setSelectedQuestions(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      setSelectedQuestions(prev => [...new Set([...prev, ...filteredQuestions.map(q => q.id)])]);
+      // Chọn tất cả câu hỏi trong tab hiện tại
+      setSelectedQuestions(prev => {
+        const newSelections = [...prev];
+        filteredIds.forEach(id => {
+          if (!newSelections.includes(id)) {
+            newSelections.push(id);
+          }
+        });
+        return newSelections;
+      });
     }
-  };
+  }, [filteredQuestions, selectedQuestions]);
   
-  const handleOfflineExam = () => {
+  const handleOfflineExam = useCallback(() => {
     if (selectedQuestions.length === 0) return;
     setShowPrintDialog(true);
-  };
+  }, [selectedQuestions.length]);
 
   // Trộn mảng
-  function shuffleArray(array: any[]) {
+  function shuffleArray<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -127,10 +175,12 @@ const QuizBankPage: React.FC = () => {
   }
 
   // Sinh đề và in file
-  const handlePrintConfirm = () => {
+  const handlePrintConfirm = useCallback(() => {
+    const allQuestionsFlat = Object.values(allLoadedQuestions).flatMap(lessonQuestions => Object.values(lessonQuestions));
     const questionsToPrint = selectedQuestions
-      .map(id => Object.values(allLoadedQuestions).flat().find(q => q && q.id === id))
+      .map(id => allQuestionsFlat.find(q => q && q.id === id))
       .filter((q): q is Question => q !== undefined);
+      
     if (questionsToPrint.length === 0) return;
 
     // Chia nhóm câu hỏi
@@ -188,7 +238,7 @@ const QuizBankPage: React.FC = () => {
         fileContent += "PHẦN I: Trắc nghiệm\n\n";
         mcqQ.forEach((q, idx) => {
           fileContent += `Câu ${idx + 1}: ${q.question}\n`;
-          ['A','B','C','D'].forEach((key, i) => {
+          ['A','B','C','D'].forEach((key) => {
             if (q[`option_${key.toLowerCase()}` as keyof Question]) {
               fileContent += `  ${key}. ${q[`option_${key.toLowerCase()}` as keyof Question]}\n`;
             }
@@ -239,37 +289,38 @@ const QuizBankPage: React.FC = () => {
       URL.revokeObjectURL(url);
     }
     setShowPrintDialog(false);
-  };
+  }, [selectedQuestions, allLoadedQuestions, printCount, shuffleQuestions, shuffleMcqOptions]);
 
-  const handleOnlineExam = () => {
-  if (selectedQuestions.length === 0) return;
-  const questionsForExam = selectedQuestions
-    .map(id => Object.values(allLoadedQuestions).flat().find(q => q && q.id === id))
-    .filter((q): q is Question => q !== undefined);
-  if (questionsForExam.length === 0) return;
+  const handleOnlineExam = useCallback(() => {
+    if (selectedQuestions.length === 0) return;
+    const allQuestionsFlat = Object.values(allLoadedQuestions).flatMap(lessonQuestions => Object.values(lessonQuestions));
+    const questionsForExam = selectedQuestions
+      .map(id => allQuestionsFlat.find(q => q && q.id === id))
+      .filter((q): q is Question => q !== undefined);
+    if (questionsForExam.length === 0) return;
 
-  // Chia nhóm câu hỏi
-  let mcq = questionsForExam.filter(q => q.type === 'mcq');
-  let msq = questionsForExam.filter(q => q.type === 'msq');
-  let sa = questionsForExam.filter(q => q.type === 'sa');
+    // Chia nhóm câu hỏi
+    let mcq = questionsForExam.filter(q => q.type === 'mcq');
+    let msq = questionsForExam.filter(q => q.type === 'msq');
+    let sa = questionsForExam.filter(q => q.type === 'sa');
 
-  // Trộn câu hỏi từng loại nếu chọn
-  let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
-  let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
-  let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
+    // Trộn câu hỏi từng loại nếu chọn
+    let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
+    let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
+    let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
 
-  const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
+    const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
 
-  navigate('/exam', { state: { questions: shuffledQuestions, title: "Đề thi tổng hợp" } });
-  };
-  
+    navigate('/exam', { state: { questions: shuffledQuestions, title: "Đề thi tổng hợp" } });
+  }, [selectedQuestions, allLoadedQuestions, shuffleQuestions, navigate]);
   
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
     if (error) return <div className="text-center text-red-600 bg-red-100 p-4 rounded-lg border border-red-200">{error}</div>;
     if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500 py-16">Không có câu hỏi nào cho bài học này.</div>;
 
-    const allInViewSelected = filteredQuestions.length > 0 && selectedQuestions.length >= filteredQuestions.length && filteredQuestions.every(q => selectedQuestions.includes(q.id));
+    const filteredIds = filteredQuestions.map(q => q.id);
+    const allInViewSelected = filteredIds.length > 0 && filteredIds.every(id => selectedQuestions.includes(id));
 
     const renderTabs = () => (
       <div className="border-b border-gray-200 mb-6">
@@ -327,7 +378,7 @@ const QuizBankPage: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-            {filteredQuestions.map((q, i) => (
+            {filteredQuestions.map((q) => (
               <QuestionCard 
                 key={q.id} 
                 question={q} 
