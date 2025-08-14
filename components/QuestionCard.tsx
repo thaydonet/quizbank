@@ -90,7 +90,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
   return (
     <div
       onClick={handleCardClick}
-      className={`bg-white p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${isSelected ? 'border-indigo-500 shadow-md' : 'border-transparent hover:border-indigo-300 shadow-sm'}`}
+      className={`bg-white p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${
+        isSelected 
+          ? 'border-indigo-500 shadow-lg ring-2 ring-indigo-200 bg-indigo-50/30' 
+          : 'border-transparent hover:border-indigo-300 shadow-sm'
+      }`}
       role="button"
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -108,6 +112,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
             <p className="font-semibold text-gray-900 flex-grow">
               <span className="text-indigo-600 mr-2">{`Câu ${index + 1}:`}</span>
               <MathContent content={question.question} />
+              {isSelected && (
+                <span className="ml-2 px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full">
+                  ✓ Đã chọn
+                </span>
+              )}
             </p>
           </div>
           <div className="ml-4 flex-shrink-0">
