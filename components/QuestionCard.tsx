@@ -56,8 +56,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
   };
   
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      // Prevent click event from firing when the button is clicked
-      if ((e.target as HTMLElement).closest('button')) {
+      // Prevent click event from firing when the button is clicked, but allow checkbox clicks
+      const target = e.target as HTMLElement;
+      if (target.closest('button') && !target.closest('input[type="checkbox"]')) {
         return;
       }
       onSelect(question.id);
@@ -81,7 +82,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, onSelect, 
             <input
               type="checkbox"
               checked={isSelected}
-              onChange={() => onSelect(question.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                onSelect(question.id);
+              }}
               className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 mr-2"
               aria-label="Chọn câu hỏi"
             />

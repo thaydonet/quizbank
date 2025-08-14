@@ -16,7 +16,8 @@ const QuizBankPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<string>('toan-12-bai-1');
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
-  const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [id: string]: Question }>({});
+  const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [lessonPath: string]: { [id: string]: Question } }>({});
+  const [lessonSelectedQuestions, setLessonSelectedQuestions] = useState<{ [lessonPath: string]: string[] }>({});
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -24,6 +25,15 @@ const QuizBankPage: React.FC = () => {
   const fetchLessonData = useCallback(async (path: string) => {
   setIsLoading(true);
   setError(null);
+  
+  // Lưu trạng thái chọn câu hỏi của bài hiện tại trước khi chuyển
+  if (activeLesson && selectedQuestions.length > 0) {
+    setLessonSelectedQuestions(prev => ({
+      ...prev,
+      [activeLesson]: selectedQuestions
+    }));
+  }
+  
   setActiveLesson(path);
     try {
       const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
@@ -32,12 +42,18 @@ const QuizBankPage: React.FC = () => {
       }
       const data: QuizData = await response.json();
       setQuizData(data);
-      setAllLoadedQuestions(prev => {
-        const newPool = { ...prev };
-        data.questions.forEach(q => {
-          newPool[q.id] = q;
-        });
-        return newPool;
+      
+      // Cập nhật allLoadedQuestions theo lesson
+      setAllLoadedQuestions(prev => ({
+        ...prev,
+        [path]: data.questions.reduce((acc, q) => ({ ...acc, [q.id]: q }), {})
+      }));
+      
+      // Khôi phục trạng thái chọn câu hỏi của bài này
+      const savedSelections = lessonSelectedQuestions[path] || [];
+      setSelectedQuestions(savedSelections.filter(id => 
+        data.questions.some(q => q.id === id)
+      ));
       });
     } catch (err) {
       if (err instanceof Error) setError(err.message);
@@ -47,6 +63,18 @@ const QuizBankPage: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
+  
+  useEffect(() => {
+    // Lưu trạng thái chọn câu hỏi khi component unmount
+    return () => {
+      if (activeLesson && selectedQuestions.length > 0) {
+        setLessonSelectedQuestions(prev => ({
+          ...prev,
+          [activeLesson]: selectedQuestions
+        }));
+      }
+    };
+  }, [activeLesson, selectedQuestions]);
   
   useEffect(() => {
     fetchLessonData(activeLesson);
@@ -114,7 +142,7 @@ const QuizBankPage: React.FC = () => {
   // Sinh đề và in file
   const handlePrintConfirm = () => {
     const questionsToPrint = selectedQuestions
-      .map(id => allLoadedQuestions[id])
+      .map(id => allLoadedQuestions[activeLesson]?.[id])
       .filter((q): q is Question => q !== undefined);
     if (questionsToPrint.length === 0) return;
 
@@ -229,7 +257,7 @@ const QuizBankPage: React.FC = () => {
   const handleOnlineExam = () => {
   if (selectedQuestions.length === 0) return;
   const questionsForExam = selectedQuestions
-    .map(id => allLoadedQuestions[id])
+    .map(id => allLoadedQuestions[activeLesson]?.[id])
     .filter((q): q is Question => q !== undefined);
   if (questionsForExam.length === 0) return;
 
