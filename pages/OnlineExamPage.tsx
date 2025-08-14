@@ -7,11 +7,17 @@ import XCircleIcon from '../components/icons/XCircleIcon';
 
 type UserAnswers = { [questionId: string]: string };
 
+// Interface mở rộng cho Question với uniqueId
+interface QuestionWithUniqueId extends Question {
+  uniqueId: string;
+  originalId: string;
+}
+
 const OnlineExamPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<QuestionWithUniqueId[]>([]);
   const [title, setTitle] = useState<string>('Đề thi Online');
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
@@ -26,24 +32,32 @@ const OnlineExamPage: React.FC = () => {
     return arr;
   }
 
+  // Tạo uniqueId để tránh trùng lặp
+  const generateUniqueId = (originalId: string, type: string, index: number): string => {
+    return `${type}_${originalId}_${index}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
   const initializeState = useCallback(() => {
     if (location.state && location.state.questions && location.state.title) {
       // Chia nhóm câu hỏi
       let mcq = location.state.questions.filter((q: Question) => q.type === 'mcq');
       let msq = location.state.questions.filter((q: Question) => q.type === 'msq');
       let sa = location.state.questions.filter((q: Question) => q.type === 'sa');
+      
       // Trộn câu hỏi từng loại
       mcq = shuffleArray(mcq);
-      msq = shuffleArray(msq); // chỉ trộn câu hỏi, không trộn đáp án
+      msq = shuffleArray(msq);
       sa = shuffleArray(sa);
+      
       // Trộn đáp án phần I và cập nhật correct_option
-      mcq = mcq.map((q: Question) => {
+      mcq = mcq.map((q: Question, index: number) => {
         const options = [
           { key: 'A', value: q.option_a },
           { key: 'B', value: q.option_b },
           { key: 'C', value: q.option_c },
           { key: 'D', value: q.option_d }
         ].filter(opt => opt.value);
+        
         let correctKey = q.correct_option.trim();
         let correctValue = '';
         if (['A','B','C','D'].includes(correctKey)) {
@@ -51,20 +65,38 @@ const OnlineExamPage: React.FC = () => {
         } else {
           correctValue = correctKey;
         }
+        
         const shuffled = shuffleArray(options);
         // Tìm vị trí mới của đáp án đúng
         let newCorrectIndex = shuffled.findIndex(opt => opt.value === correctValue);
         let newCorrectOption = String.fromCharCode(65 + newCorrectIndex);
-        // Gán lại đáp án đã trộn
+        
+        // Tạo uniqueId và gán lại đáp án đã trộn
         return {
           ...q,
+          uniqueId: generateUniqueId(q.id, 'mcq', index),
+          originalId: q.id,
           option_a: shuffled[0]?.value,
           option_b: shuffled[1]?.value,
           option_c: shuffled[2]?.value,
           option_d: shuffled[3]?.value,
           correct_option: newCorrectOption
-        };
+        } as QuestionWithUniqueId;
       });
+
+      // Thêm uniqueId cho các câu hỏi MSQ và SA
+      msq = msq.map((q: Question, index: number) => ({
+        ...q,
+        uniqueId: generateUniqueId(q.id, 'msq', index),
+        originalId: q.id
+      } as QuestionWithUniqueId));
+
+      sa = sa.map((q: Question, index: number) => ({
+        ...q,
+        uniqueId: generateUniqueId(q.id, 'sa', index),
+        originalId: q.id
+      } as QuestionWithUniqueId));
+      
       const shuffledQuestions = [...mcq, ...msq, ...sa];
       setQuestions(shuffledQuestions);
       setTitle(location.state.title);
@@ -80,16 +112,16 @@ const OnlineExamPage: React.FC = () => {
     initializeState();
   }, [initializeState]);
 
-  const handleAnswerChange = (questionId: string, answer: string, type: 'mcq' | 'sa' | 'msq') => {
+  const handleAnswerChange = (questionUniqueId: string, answer: string, type: 'mcq' | 'sa' | 'msq') => {
     if (isSubmitted) return;
     if (type === 'msq') {
-        const currentAnswers = (userAnswers[questionId] || '').split(',').filter(Boolean);
+        const currentAnswers = (userAnswers[questionUniqueId] || '').split(',').filter(Boolean);
         const newAnswers = currentAnswers.includes(answer)
             ? currentAnswers.filter(a => a !== answer)
             : [...currentAnswers, answer];
-        setUserAnswers(prev => ({ ...prev, [questionId]: newAnswers.sort().join(',') }));
+        setUserAnswers(prev => ({ ...prev, [questionUniqueId]: newAnswers.sort().join(',') }));
     } else {
-        setUserAnswers(prev => ({ ...prev, [questionId]: answer }));
+        setUserAnswers(prev => ({ ...prev, [questionUniqueId]: answer }));
     }
   };
 
@@ -102,7 +134,7 @@ const OnlineExamPage: React.FC = () => {
 
   const getScore = () => {
     return questions.reduce((score, q) => {
-        const userAnswer = userAnswers[q.id] || '';
+        const userAnswer = userAnswers[q.uniqueId] || '';
         if (q.type === 'msq') {
             const correct = q.correct_option.split(',').sort().join(',');
             if (userAnswer === correct) return score + 1;
@@ -116,9 +148,9 @@ const OnlineExamPage: React.FC = () => {
     }, 0);
   };
   
-  const getResultClasses = (q: Question, optionKey: string) => {
+  const getResultClasses = (q: QuestionWithUniqueId, optionKey: string) => {
     const correctOptions = q.correct_option.split(',');
-    const userChoice = (userAnswers[q.id] || '').split(',');
+    const userChoice = (userAnswers[q.uniqueId] || '').split(',');
     
     const isCorrect = correctOptions.includes(optionKey);
     const isUserSelected = userChoice.includes(optionKey);
@@ -137,51 +169,6 @@ const OnlineExamPage: React.FC = () => {
         default: return 'bg-white border-gray-200';
     }
   };
-
-  const renderQuestionInputs = (q: Question) => {
-    const commonOptionClasses = 'flex items-center p-3.5 rounded-lg border transition-all duration-200';
-    const activeOptionClasses = isSubmitted ? '' : 'cursor-pointer hover:bg-indigo-50 hover:border-indigo-400';
-
-    switch(q.type) {
-      case 'mcq':
-        return ['A', 'B', 'C', 'D'].map(key => {
-          const optionKey = `option_${key.toLowerCase()}` as keyof Question;
-          if (!q[optionKey]) return null;
-          return (
-            <label key={key} className={`${commonOptionClasses} ${isSubmitted ? getResultClasses(q, key) : 'bg-white'}`}>
-              <input type="radio" name={q.id} value={key} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'mcq')} disabled={isSubmitted} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"/>
-              <span className="ml-3 flex items-center gap-2 text-gray-700"><span className="font-bold">{key}.</span><MathContent content={q[optionKey] as string} /></span>
-            </label>
-          )
-        });
-      case 'msq':
-        return ['A', 'B', 'C', 'D'].map(key => {
-          const optionKey = `option_${key.toLowerCase()}` as keyof Question;
-          if (!q[optionKey]) return null;
-          return (
-            <label key={key} className={`${commonOptionClasses} ${isSubmitted ? getResultClasses(q, key) : 'bg-white'}`}>
-              <input type="checkbox" name={q.id} value={key} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'msq')} disabled={isSubmitted} checked={(userAnswers[q.id] || '').includes(key)} className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"/>
-              <span className="ml-3 flex items-center gap-2 text-gray-700"><span className="font-bold">{key}.</span><MathContent content={q[optionKey] as string} /></span>
-            </label>
-          )
-        });
-      case 'sa':
-        const userAnswer = userAnswers[q.id] || '';
-        let saResultClass = 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white';
-        if(isSubmitted) {
-            const isCorrect = q.correct_option.split(';').map(a=>a.trim().toLowerCase()).includes(userAnswer.trim().toLowerCase());
-            saResultClass = isCorrect ? 'border-green-500 ring-2 ring-green-300 bg-green-50' : 'border-red-500 ring-2 ring-red-300 bg-red-50';
-        }
-        return (
-          <div>
-            <label className="font-medium text-gray-700 mb-2 block">Nhập câu trả lời:</label>
-            <input type="text" value={userAnswer} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'sa')} disabled={isSubmitted} className={`w-full p-2 border rounded-lg shadow-sm transition ${saResultClass}`}/>
-          </div>
-        );
-      default:
-        return null;
-    }
-  }
 
   if (questions.length === 0) {
     return <div className="text-center p-8 text-gray-500">Đang tải đề...</div>;
@@ -219,12 +206,12 @@ const OnlineExamPage: React.FC = () => {
                   <div className="mb-8">
                     <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần I: Trắc nghiệm</h2>
                     {mcq.map((q) => {
-                      const userAnswer = userAnswers[q.id] || '';
+                      const userAnswer = userAnswers[q.uniqueId] || '';
                       let isCorrect = false;
                       if (isSubmitted) isCorrect = userAnswer === q.correct_option;
                       const number = idx++;
                       return (
-                        <div key={q.id} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
+                        <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
                             <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
@@ -240,9 +227,20 @@ const OnlineExamPage: React.FC = () => {
                               if (isSubmitted && key === q.correct_option) optionClass = 'bg-green-100 border-green-400 ring-2 ring-green-300';
                               if (isSubmitted && userAnswer === key && key !== q.correct_option) optionClass = 'bg-red-100 border-red-400';
                               return (
-                                <label key={key} className={`flex items-center p-3.5 rounded-lg border transition-all duration-200 ${optionClass}`}>
-                                  <input type="radio" name={q.id} value={key} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'mcq')} disabled={isSubmitted} checked={userAnswer === key} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"/>
-                                  <span className="ml-3 flex items-center gap-2 text-gray-700"><span className="font-bold">{key}.</span><MathContent content={q[optionKey] as string} /></span>
+                                <label key={`${q.uniqueId}_${key}`} className={`flex items-center p-3.5 rounded-lg border transition-all duration-200 ${optionClass}`}>
+                                  <input 
+                                    type="radio" 
+                                    name={q.uniqueId} 
+                                    value={key} 
+                                    onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'mcq')} 
+                                    disabled={isSubmitted} 
+                                    checked={userAnswer === key} 
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"
+                                  />
+                                  <span className="ml-3 flex items-center gap-2 text-gray-700">
+                                    <span className="font-bold">{key}.</span>
+                                    <MathContent content={q[optionKey] as string} />
+                                  </span>
                                 </label>
                               )
                             })}
@@ -265,14 +263,14 @@ const OnlineExamPage: React.FC = () => {
                   <div className="mb-8">
                     <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần II: Đúng - Sai</h2>
                     {msq.map((q) => {
-                      const userAnswer = userAnswers[q.id] || '';
+                      const userAnswer = userAnswers[q.uniqueId] || '';
                       let isCorrect = false;
                       if (isSubmitted) isCorrect = userAnswer === q.correct_option.split(',').map(x=>x.trim().toLowerCase()).sort().join(',');
                       const correctOptions = q.correct_option.split(',').map(x=>x.trim().toLowerCase());
                       const userOptions = userAnswer.split(',').map(x=>x.trim().toLowerCase());
                       const number = idx++;
                       return (
-                        <div key={q.id} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
+                        <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
                             <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
@@ -288,9 +286,20 @@ const OnlineExamPage: React.FC = () => {
                               if (isSubmitted && correctOptions.includes(key)) optionClass = 'bg-green-100 border-green-400 ring-2 ring-green-300';
                               if (isSubmitted && userOptions.includes(key) && !correctOptions.includes(key)) optionClass = 'bg-red-100 border-red-400';
                               return (
-                                <label key={key} className={`flex items-center p-3.5 rounded-lg border transition-all duration-200 ${optionClass}`}>
-                                  <input type="checkbox" name={q.id} value={key} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'msq')} disabled={isSubmitted} checked={userOptions.includes(key)} className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"/>
-                                  <span className="ml-3 flex items-center gap-2 text-gray-700"><span className="font-bold">{key})</span><MathContent content={q[optionKey] as string} /></span>
+                                <label key={`${q.uniqueId}_${key}`} className={`flex items-center p-3.5 rounded-lg border transition-all duration-200 ${optionClass}`}>
+                                  <input 
+                                    type="checkbox" 
+                                    name={q.uniqueId} 
+                                    value={key} 
+                                    onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'msq')} 
+                                    disabled={isSubmitted} 
+                                    checked={userOptions.includes(key)} 
+                                    className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 accent-indigo-600"
+                                  />
+                                  <span className="ml-3 flex items-center gap-2 text-gray-700">
+                                    <span className="font-bold">{key})</span>
+                                    <MathContent content={q[optionKey] as string} />
+                                  </span>
                                 </label>
                               )
                             })}
@@ -313,17 +322,16 @@ const OnlineExamPage: React.FC = () => {
                   <div className="mb-8">
                     <h2 className="text-xl font-bold text-indigo-700 mb-4">Phần III: Trả lời ngắn</h2>
                     {sa.map((q) => {
-                      const userAnswer = userAnswers[q.id] || '';
+                      const userAnswer = userAnswers[q.uniqueId] || '';
                       let isCorrect = false;
                       if (isSubmitted) isCorrect = q.correct_option.split(';').map(a=>a.trim().toLowerCase()).includes(userAnswer.trim().toLowerCase());
-                      const correctAnswers = q.correct_option.split(';').map(a=>a.trim().toLowerCase());
                       const number = idx++;
                       let saResultClass = 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 bg-white';
                       if (!isSubmitted && userAnswer) saResultClass = 'bg-indigo-100 border-indigo-400';
                       if (isSubmitted && isCorrect) saResultClass = 'border-green-500 ring-2 ring-green-300 bg-green-50';
                       if (isSubmitted && userAnswer && !isCorrect) saResultClass = 'border-red-500 ring-2 ring-red-300 bg-red-50';
                       return (
-                        <div key={q.id} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
+                        <div key={q.uniqueId} className={`p-5 rounded-xl border-2 transition-colors duration-300 ${getQuestionCardClass(q.type, isSubmitted)} mb-4`}>
                           <div className="flex items-start gap-4">
                             <div className="flex-shrink-0 font-bold text-gray-700 text-lg">Câu {number}:</div>
                             <div className="flex-grow pt-0.5 text-gray-800"><MathContent content={q.question} /></div>
@@ -331,7 +339,13 @@ const OnlineExamPage: React.FC = () => {
                           </div>
                           <div className="mt-5 pl-10 space-y-3">
                             <label className="font-medium text-gray-700 mb-2 block">Nhập câu trả lời:</label>
-                            <input type="text" value={userAnswer} onChange={(e) => handleAnswerChange(q.id, e.target.value, 'sa')} disabled={isSubmitted} className={`w-full p-2 border rounded-lg shadow-sm transition ${saResultClass}`} />
+                            <input 
+                              type="text" 
+                              value={userAnswer} 
+                              onChange={(e) => handleAnswerChange(q.uniqueId, e.target.value, 'sa')} 
+                              disabled={isSubmitted} 
+                              className={`w-full p-2 border rounded-lg shadow-sm transition ${saResultClass}`} 
+                            />
                           </div>
                           {isSubmitted && (
                             <div className="mt-5 p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg -m-5 mt-5 pt-5">
