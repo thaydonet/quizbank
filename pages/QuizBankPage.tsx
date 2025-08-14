@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import QuestionCard from '../components/QuestionCard';
@@ -15,43 +15,37 @@ const QuizBankPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeLesson, setActiveLesson] = useState<string>('toan-12-bai-1');
-  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  
+  // Global selections - lưu tất cả câu hỏi đã chọn từ mọi bài học
+  const [globalSelectedQuestions, setGlobalSelectedQuestions] = useState<string[]>([]);
+  
+  // Lưu trữ tất cả câu hỏi đã load từ mọi bài học
   const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [lessonPath: string]: { [id: string]: Question } }>({});
-  const [lessonSelectedQuestions, setLessonSelectedQuestions] = useState<{ [lessonPath: string]: string[] }>({});
+  
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Ref để track lesson hiện tại khi save selections
-  const currentLessonRef = useRef<string>(activeLesson);
+  // Function để lấy tất cả questions đã load
+  const getAllLoadedQuestionsFlat = useCallback((): Question[] => {
+    const allQuestions: Question[] = [];
+    Object.values(allLoadedQuestions).forEach(lessonQuestions => {
+      Object.values(lessonQuestions).forEach(question => {
+        if (question) allQuestions.push(question);
+      });
+    });
+    return allQuestions;
+  }, [allLoadedQuestions]);
 
-  // Update ref khi activeLesson thay đổi
-  useEffect(() => {
-    currentLessonRef.current = activeLesson;
-  }, [activeLesson]);
+  // Function để lấy questions thuộc lesson hiện tại
+  const getCurrentLessonQuestions = useCallback((): string[] => {
+    if (!quizData) return [];
+    return quizData.questions.map(q => q.id);
+  }, [quizData]);
 
-  // Tách riêng function lưu selections
-  const saveCurrentSelections = useCallback(() => {
-    const currentLesson = currentLessonRef.current;
-    if (currentLesson && selectedQuestions.length > 0) {
-      setLessonSelectedQuestions(prev => ({
-        ...prev,
-        [currentLesson]: [...selectedQuestions] // Clone array để tránh reference issues
-      }));
-    }
-  }, [selectedQuestions]);
-
-  // Sửa lại fetchLessonData để tránh dependency cycle
   const fetchLessonData = useCallback(async (path: string) => {
     setIsLoading(true);
     setError(null);
-    
-    // Lưu trạng thái chọn câu hỏi của bài hiện tại trước khi chuyển
-    // Chỉ lưu nếu không phải lần đầu load và có selections
-    if (currentLessonRef.current !== path) {
-      saveCurrentSelections();
-    }
-    
     setActiveLesson(path);
     
     try {
@@ -68,51 +62,34 @@ const QuizBankPage: React.FC = () => {
         [path]: data.questions.reduce((acc, q) => ({ ...acc, [q.id]: q }), {})
       }));
       
-      // Khôi phục trạng thái chọn câu hỏi của bài này
-      // Sử dụng functional update để đảm bảo có state mới nhất
-      setLessonSelectedQuestions(prevLessonSelections => {
-        const savedSelections = prevLessonSelections[path] || [];
-        const validSelections = savedSelections.filter(id => 
-          data.questions.some(q => q.id === id)
-        );
-        setSelectedQuestions(validSelections);
-        return prevLessonSelections;
-      });
-      
     } catch (err) {
       if (err instanceof Error) setError(err.message);
       else setError('Đã xảy ra lỗi không xác định.');
       setQuizData(null);
-      setSelectedQuestions([]); // Clear selections nếu có lỗi
     } finally {
       setIsLoading(false);
     }
-  }, [saveCurrentSelections]); // Chỉ depend on saveCurrentSelections
+  }, []);
 
-  // Effect để load lesson đầu tiên
+  // Load lesson đầu tiên
   useEffect(() => {
     fetchLessonData(activeLesson);
-  }, []); // Chỉ chạy một lần khi mount
+  }, []);
 
-  // Effect để save selections khi component unmount hoặc activeLesson thay đổi
-  useEffect(() => {
-    return () => {
-      // Cleanup: save selections khi component unmount
-      saveCurrentSelections();
-    };
-  }, [saveCurrentSelections]);
-
+  // Handler để select/deselect question - áp dụng cho global selection
   const handleSelectQuestion = useCallback((id: string) => {
-    setSelectedQuestions(prev => {
-      // Nếu đã chọn thì bỏ chọn, nếu chưa thì thêm vào
+    setGlobalSelectedQuestions(prev => {
       if (prev.includes(id)) {
+        // Bỏ chọn
         return prev.filter(qid => qid !== id);
       } else {
+        // Thêm vào chọn
         return [...prev, id];
       }
     });
   }, []);
   
+  // Filter questions theo tab hiện tại (chỉ trong lesson hiện tại)
   const filteredQuestions = useMemo(() => {
     if (!quizData) return [];
     switch (activeTab) {
@@ -128,6 +105,7 @@ const QuizBankPage: React.FC = () => {
     }
   }, [quizData, activeTab]);
   
+  // Đếm số câu hỏi theo loại trong lesson hiện tại
   const counts = useMemo(() => {
       if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
       return {
@@ -138,16 +116,40 @@ const QuizBankPage: React.FC = () => {
       };
   }, [quizData]);
 
+  // Đếm số câu đã chọn trong lesson hiện tại theo loại
+  const selectedCountsInCurrentLesson = useMemo(() => {
+    if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
+    
+    const currentLessonSelectedIds = globalSelectedQuestions.filter(id => 
+      quizData.questions.some(q => q.id === id)
+    );
+    
+    const selectedQuestions = quizData.questions.filter(q => 
+      currentLessonSelectedIds.includes(q.id)
+    );
+    
+    return {
+      all: selectedQuestions.length,
+      mcq: selectedQuestions.filter(q => q.type === 'mcq').length,
+      msq: selectedQuestions.filter(q => q.type === 'msq').length,
+      sa: selectedQuestions.filter(q => q.type === 'sa').length
+    };
+  }, [quizData, globalSelectedQuestions]);
+
+  // Handle select all cho lesson hiện tại và tab hiện tại
   const handleSelectAll = useCallback(() => {
     const filteredIds = filteredQuestions.map(q => q.id);
-    const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedQuestions.includes(id));
+    const allFilteredSelected = filteredIds.length > 0 && 
+      filteredIds.every(id => globalSelectedQuestions.includes(id));
     
     if (allFilteredSelected) {
       // Bỏ chọn tất cả câu hỏi trong tab hiện tại
-      setSelectedQuestions(prev => prev.filter(id => !filteredIds.includes(id)));
+      setGlobalSelectedQuestions(prev => 
+        prev.filter(id => !filteredIds.includes(id))
+      );
     } else {
       // Chọn tất cả câu hỏi trong tab hiện tại
-      setSelectedQuestions(prev => {
+      setGlobalSelectedQuestions(prev => {
         const newSelections = [...prev];
         filteredIds.forEach(id => {
           if (!newSelections.includes(id)) {
@@ -157,12 +159,12 @@ const QuizBankPage: React.FC = () => {
         return newSelections;
       });
     }
-  }, [filteredQuestions, selectedQuestions]);
+  }, [filteredQuestions, globalSelectedQuestions]);
   
   const handleOfflineExam = useCallback(() => {
-    if (selectedQuestions.length === 0) return;
+    if (globalSelectedQuestions.length === 0) return;
     setShowPrintDialog(true);
-  }, [selectedQuestions.length]);
+  }, [globalSelectedQuestions.length]);
 
   // Trộn mảng
   function shuffleArray<T>(array: T[]): T[] {
@@ -174,11 +176,11 @@ const QuizBankPage: React.FC = () => {
     return arr;
   }
 
-  // Sinh đề và in file
+  // Sinh đề và in file - sử dụng global selections
   const handlePrintConfirm = useCallback(() => {
-    const allQuestionsFlat = Object.values(allLoadedQuestions).flatMap(lessonQuestions => Object.values(lessonQuestions));
-    const questionsToPrint = selectedQuestions
-      .map(id => allQuestionsFlat.find(q => q && q.id === id))
+    const allQuestionsFlat = getAllLoadedQuestionsFlat();
+    const questionsToPrint = globalSelectedQuestions
+      .map(id => allQuestionsFlat.find(q => q.id === id))
       .filter((q): q is Question => q !== undefined);
       
     if (questionsToPrint.length === 0) return;
@@ -195,6 +197,9 @@ const QuizBankPage: React.FC = () => {
       let fileContent = `ĐỀ THI TỔNG HỢP - Đề số ${d}\n`;
       fileContent += `Ngày tạo: ${dateStr}\n`;
       fileContent += `Số câu: ${questionsToPrint.length}\n`;
+      fileContent += `  - Trắc nghiệm: ${mcq.length} câu\n`;
+      fileContent += `  - Đúng-Sai: ${msq.length} câu\n`;
+      fileContent += `  - Trả lời ngắn: ${sa.length} câu\n`;
       fileContent += `----------------------------------------\n\n`;
 
       // Trộn câu hỏi từng loại nếu chọn
@@ -210,32 +215,37 @@ const QuizBankPage: React.FC = () => {
           { key: 'C', value: q.option_c },
           { key: 'D', value: q.option_d }
         ].filter(opt => opt.value);
+        
         let correctKey = q.correct_option.trim();
         let correctValue = '';
+        
         // Tìm giá trị đáp án đúng ban đầu
         if (['A','B','C','D'].includes(correctKey)) {
           correctValue = q[`option_${correctKey.toLowerCase()}` as keyof Question] as string;
         } else {
           correctValue = correctKey;
         }
+        
         let shuffledOptions = shuffleMcqOptions ? shuffleArray(options) : options;
+        
         // Tìm vị trí mới của đáp án đúng
         let newCorrectIndex = shuffledOptions.findIndex(opt => opt.value === correctValue);
-        let newCorrectOption = String.fromCharCode(65 + newCorrectIndex);
+        let newCorrectOption = newCorrectIndex >= 0 ? String.fromCharCode(65 + newCorrectIndex) : correctKey;
+        
         // Gán lại đáp án đúng
         return {
           ...q,
-          option_a: shuffledOptions[0]?.value,
-          option_b: shuffledOptions[1]?.value,
-          option_c: shuffledOptions[2]?.value,
-          option_d: shuffledOptions[3]?.value,
+          option_a: shuffledOptions[0]?.value || '',
+          option_b: shuffledOptions[1]?.value || '',
+          option_c: shuffledOptions[2]?.value || '',
+          option_d: shuffledOptions[3]?.value || '',
           correct_option: newCorrectOption
         };
       });
 
       // Phần I: Trắc nghiệm
       if (mcqQ.length > 0) {
-        fileContent += "PHẦN I: Trắc nghiệm\n\n";
+        fileContent += "PHẦN I: TRẮC NGHIỆM\n\n";
         mcqQ.forEach((q, idx) => {
           fileContent += `Câu ${idx + 1}: ${q.question}\n`;
           ['A','B','C','D'].forEach((key) => {
@@ -249,7 +259,7 @@ const QuizBankPage: React.FC = () => {
 
       // Phần II: Đúng - Sai
       if (msqQ.length > 0) {
-        fileContent += "PHẦN II: Đúng - Sai\n\n";
+        fileContent += "PHẦN II: ĐÚNG - SAI\n\n";
         msqQ.forEach((q, idx) => {
           fileContent += `Câu ${mcqQ.length + idx + 1}: ${q.question}\n`;
           fileContent += `  a) ${q.option_a || ''}\n`;
@@ -261,7 +271,7 @@ const QuizBankPage: React.FC = () => {
 
       // Phần III: Trả lời ngắn
       if (saQ.length > 0) {
-        fileContent += "PHẦN III: Trả lời ngắn\n\n";
+        fileContent += "PHẦN III: TRẢ LỜI NGẮN\n\n";
         saQ.forEach((q, idx) => {
           fileContent += `Câu ${mcqQ.length + msqQ.length + idx + 1}: ${q.question}\n`;
           fileContent += `  Đáp án: ________________\n\n`;
@@ -269,7 +279,7 @@ const QuizBankPage: React.FC = () => {
       }
 
       // Đáp án & lời giải
-      fileContent += "\n\n--- PHẦN ĐÁP ÁN & LỜI GIẢI ---\n\n";
+      fileContent += "\n\n=== PHẦN ĐÁP ÁN & LỜI GIẢI ===\n\n";
       let allQuestions = [...mcqQ, ...msqQ, ...saQ];
       allQuestions.forEach((q, i) => {
         fileContent += `Câu ${i + 1}:\n`;
@@ -289,13 +299,14 @@ const QuizBankPage: React.FC = () => {
       URL.revokeObjectURL(url);
     }
     setShowPrintDialog(false);
-  }, [selectedQuestions, allLoadedQuestions, printCount, shuffleQuestions, shuffleMcqOptions]);
+  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, printCount, shuffleQuestions, shuffleMcqOptions]);
 
+  // Thi online - sử dụng global selections
   const handleOnlineExam = useCallback(() => {
-    if (selectedQuestions.length === 0) return;
-    const allQuestionsFlat = Object.values(allLoadedQuestions).flatMap(lessonQuestions => Object.values(lessonQuestions));
-    const questionsForExam = selectedQuestions
-      .map(id => allQuestionsFlat.find(q => q && q.id === id))
+    if (globalSelectedQuestions.length === 0) return;
+    const allQuestionsFlat = getAllLoadedQuestionsFlat();
+    const questionsForExam = globalSelectedQuestions
+      .map(id => allQuestionsFlat.find(q => q.id === id))
       .filter((q): q is Question => q !== undefined);
     if (questionsForExam.length === 0) return;
 
@@ -312,7 +323,12 @@ const QuizBankPage: React.FC = () => {
     const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
 
     navigate('/exam', { state: { questions: shuffledQuestions, title: "Đề thi tổng hợp" } });
-  }, [selectedQuestions, allLoadedQuestions, shuffleQuestions, navigate]);
+  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, shuffleQuestions, navigate]);
+
+  // Function để clear tất cả selections
+  const handleClearAllSelections = useCallback(() => {
+    setGlobalSelectedQuestions([]);
+  }, []);
   
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
@@ -320,22 +336,47 @@ const QuizBankPage: React.FC = () => {
     if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500 py-16">Không có câu hỏi nào cho bài học này.</div>;
 
     const filteredIds = filteredQuestions.map(q => q.id);
-    const allInViewSelected = filteredIds.length > 0 && filteredIds.every(id => selectedQuestions.includes(id));
+    const allInViewSelected = filteredIds.length > 0 && 
+      filteredIds.every(id => globalSelectedQuestions.includes(id));
 
     const renderTabs = () => (
       <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-6" aria-label="Tabs">
               <button onClick={() => setActiveTab('all')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Tất cả <span className="bg-gray-200 text-gray-700 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.all}</span>
+                  Tất cả 
+                  <span className="bg-gray-200 text-gray-700 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.all}</span>
+                  {selectedCountsInCurrentLesson.all > 0 && (
+                    <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
+                      {selectedCountsInCurrentLesson.all}
+                    </span>
+                  )}
               </button>
               <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'mcq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Một lựa chọn <span className="bg-blue-100 text-blue-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.mcq}</span>
+                  Một lựa chọn 
+                  <span className="bg-blue-100 text-blue-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.mcq}</span>
+                  {selectedCountsInCurrentLesson.mcq > 0 && (
+                    <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
+                      {selectedCountsInCurrentLesson.mcq}
+                    </span>
+                  )}
               </button>
               <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'msq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Nhiều lựa chọn <span className="bg-purple-100 text-purple-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.msq}</span>
+                  Nhiều lựa chọn 
+                  <span className="bg-purple-100 text-purple-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.msq}</span>
+                  {selectedCountsInCurrentLesson.msq > 0 && (
+                    <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
+                      {selectedCountsInCurrentLesson.msq}
+                    </span>
+                  )}
               </button>
               <button onClick={() => setActiveTab('sa')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'sa' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Trả lời ngắn <span className="bg-amber-100 text-amber-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.sa}</span>
+                  Trả lời ngắn 
+                  <span className="bg-amber-100 text-amber-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.sa}</span>
+                  {selectedCountsInCurrentLesson.sa > 0 && (
+                    <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
+                      {selectedCountsInCurrentLesson.sa}
+                    </span>
+                  )}
               </button>
           </nav>
       </div>
@@ -346,18 +387,35 @@ const QuizBankPage: React.FC = () => {
         <div className="relative mb-6">
           <h2 className="text-3xl font-bold text-gray-900 truncate pr-40" title={quizData.title}>{quizData.title}</h2>
           <div className="absolute top-0 right-0 flex items-center gap-2">
-            <button onClick={handleOfflineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
+            <button onClick={handleOfflineExam} disabled={globalSelectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors">
               <PrinterIcon className="w-4 h-4"/>
               <span>Tải đề</span>
-              <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-bold">{selectedQuestions.length}</span>
+              <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-bold">{globalSelectedQuestions.length}</span>
             </button>
-            <button onClick={handleOnlineExam} disabled={selectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm">
+            <button onClick={handleOnlineExam} disabled={globalSelectedQuestions.length === 0} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm">
               <PlayCircleIcon className="w-4 h-4"/>
               <span>Thi Online</span>
-              <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded text-[10px] font-bold">{selectedQuestions.length}</span>
+              <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded text-[10px] font-bold">{globalSelectedQuestions.length}</span>
             </button>
           </div>
         </div>
+        
+        {/* Hiển thị tổng số câu đã chọn từ tất cả bài học */}
+        {globalSelectedQuestions.length > 0 && (
+          <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-indigo-800">
+                <strong>Tổng số câu đã chọn từ tất cả bài học: {globalSelectedQuestions.length}</strong>
+              </div>
+              <button 
+                onClick={handleClearAllSelections}
+                className="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
+              >
+                Xóa tất cả
+              </button>
+            </div>
+          </div>
+        )}
         
         {renderTabs()}
         
@@ -372,7 +430,7 @@ const QuizBankPage: React.FC = () => {
                     disabled={filteredQuestions.length === 0}
                 />
                 <label htmlFor="select-all" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
-                    {allInViewSelected ? 'Bỏ chọn tất cả' : `Chọn tất cả ${filteredQuestions.length} câu`}
+                    {allInViewSelected ? 'Bỏ chọn tất cả trong bài này' : `Chọn tất cả ${filteredQuestions.length} câu trong bài này`}
                 </label>
             </div>
         </div>
@@ -383,7 +441,7 @@ const QuizBankPage: React.FC = () => {
                 key={q.id} 
                 question={q} 
                 index={quizData.questions.findIndex(origQ => origQ.id === q.id)}
-                isSelected={selectedQuestions.includes(q.id)}
+                isSelected={globalSelectedQuestions.includes(q.id)}
                 onSelect={handleSelectQuestion}
                 />
             ))}
@@ -400,6 +458,11 @@ const QuizBankPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-bold mb-4">Tùy chọn in đề</h2>
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700 font-medium">
+                Tổng số câu hỏi: <span className="font-bold text-indigo-600">{globalSelectedQuestions.length}</span>
+              </p>
+            </div>
             <div className="mb-3">
               <label className="block font-medium mb-1">Số đề cần in:</label>
               <input type="number" min={1} max={20} value={printCount} onChange={e => setPrintCount(Number(e.target.value))} className="w-full border rounded px-2 py-1" />
