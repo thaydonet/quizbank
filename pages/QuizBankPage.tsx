@@ -54,7 +54,6 @@ const QuizBankPage: React.FC = () => {
       setSelectedQuestions(savedSelections.filter(id => 
         data.questions.some(q => q.id === id)
       ));
-      });
     } catch (err) {
       if (err instanceof Error) setError(err.message);
       else setError('Đã xảy ra lỗi không xác định.');
@@ -62,7 +61,7 @@ const QuizBankPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeLesson, selectedQuestions, lessonSelectedQuestions]);
   
   useEffect(() => {
     // Lưu trạng thái chọn câu hỏi khi component unmount
@@ -130,7 +129,7 @@ const QuizBankPage: React.FC = () => {
   };
 
   // Trộn mảng
-  function shuffleArray(array) {
+  function shuffleArray(array: any[]) {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -177,7 +176,7 @@ const QuizBankPage: React.FC = () => {
         let correctValue = '';
         // Tìm giá trị đáp án đúng ban đầu
         if (['A','B','C','D'].includes(correctKey)) {
-          correctValue = q[`option_${correctKey.toLowerCase()}`];
+          correctValue = q[`option_${correctKey.toLowerCase()}` as keyof Question] as string;
         } else {
           correctValue = correctKey;
         }
@@ -202,8 +201,8 @@ const QuizBankPage: React.FC = () => {
         mcqQ.forEach((q, idx) => {
           fileContent += `Câu ${idx + 1}: ${q.question}\n`;
           ['A','B','C','D'].forEach((key, i) => {
-            if (q[`option_${key.toLowerCase()}`]) {
-              fileContent += `  ${key}. ${q[`option_${key.toLowerCase()}`]}\n`;
+            if (q[`option_${key.toLowerCase()}` as keyof Question]) {
+              fileContent += `  ${key}. ${q[`option_${key.toLowerCase()}` as keyof Question]}\n`;
             }
           });
           fileContent += `\n`;
@@ -252,7 +251,7 @@ const QuizBankPage: React.FC = () => {
       URL.revokeObjectURL(url);
     }
     setShowPrintDialog(false);
-    };
+  };
 
   const handleOnlineExam = () => {
   if (selectedQuestions.length === 0) return;
@@ -413,5 +412,6 @@ const QuizBankPage: React.FC = () => {
       </main>
     </div>
   );
-}
+};
+
 export default QuizBankPage;
