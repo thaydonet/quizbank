@@ -4,6 +4,7 @@ import type { Grade } from './types';
 export const MENU_DATA: Grade[] = [
   {
     name: "Toán 12",
+    name: "Chương 1: hs",
     lessons: [
       { name: "Bài 1: Sự đồng biến, nghịch biến", path: "toan-12-bai-1" },
       { name: "Bài 2: Cực trị của hàm số", path: "toan-12-bai-2" },
