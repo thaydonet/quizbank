@@ -8,7 +8,7 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-indigo-600">
+            <Link to="/quiz-bank" className="text-2xl font-bold text-indigo-600">
               Math<span className="text-gray-800">Bank AI</span>
             </Link>
           </div>
