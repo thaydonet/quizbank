@@ -9,7 +9,7 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link to="/quiz-bank" className="text-2xl font-bold text-indigo-600">
-              Math<span className="text-gray-800">Bank AI</span>
+              Math Quiz <span className="text-gray-800">Bank AI</span>
             </Link>
           </div>
           <div className="flex items-center">
