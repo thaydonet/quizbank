@@ -387,7 +387,7 @@ const QuizBankPage: React.FC = () => {
                   )}
               </button>
               <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'mcq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Một lựa chọn 
+                  Trắc nghiệm 
                   <span className="bg-blue-100 text-blue-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.mcq}</span>
                   {selectedCountsInCurrentLesson.mcq > 0 && (
                     <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
@@ -396,7 +396,7 @@ const QuizBankPage: React.FC = () => {
                   )}
               </button>
               <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'msq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                  Nhiều lựa chọn 
+                  Đúng - Sai 
                   <span className="bg-purple-100 text-purple-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.msq}</span>
                   {selectedCountsInCurrentLesson.msq > 0 && (
                     <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
