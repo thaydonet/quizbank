@@ -12,15 +12,6 @@ const Header: React.FC = () => {
               Math Quiz <span className="text-gray-800">Bank AI</span>
             </Link>
           </div>
-          <div className="flex items-center">
-            <Link
-              to="/create"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 transition-all duration-200 transform hover:scale-105"
-            >
-              <SparklesIcon className="w-5 h-5" />
-              Tạo Quiz AI
-            </Link>
-          </div>
         </div>
       </div>
     </header>
