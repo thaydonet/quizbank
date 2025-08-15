@@ -3,11 +3,11 @@ import { generateQuizQuestions } from '../services/geminiService';
 import SparklesIcon from '../components/icons/SparklesIcon';
 
 const AIGeneratorPage: React.FC = () => {
-    const [prompt, setPrompt] = useState<string>('Tạo 5 câu hỏi về chủ đề "Giá trị lớn nhất và nhỏ nhất của hàm số" cho lớp 12. Trong đó:\n- 2 câu dạng trắc nghiệm một lựa chọn (mcq).\n- 2 câu dạng trắc nghiệm nhiều lựa chọn (msq).\n- 1 câu dạng trả lời ngắn (sa).\nCác câu hỏi phải ở mức độ vận dụng, trong đó có ít nhất 2 câu chứa tham số \'m\'. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
+    const [prompt, setPrompt] = useState<string>('Tạo 10 câu hỏi về chủ đề "CHỦ ĐỀ TOÁN CỦA BẠN" cho lớp 12. Trong đó:\n- 6 câu dạng trắc nghiệm một lựa chọn (mcq) MỨC ĐỘ NHẬN BIẾT.\n- 2 câu dạng trắc nghiệm nhiều lựa chọn (msq) mức độ thông hiểu.\n- 2 câu dạng trả lời ngắn (sa) là toán thực tế mức độ Vận dụng. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
     const [generatedJson, setGeneratedJson] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [fileName, setFileName] = useState<string>('gtln-gtnn.json');
+    const [fileName, setFileName] = useState<string>('ten-chu-de-bai-hoc.json');
 
     const handleGenerate = async () => {
         if (!prompt) {
@@ -82,7 +82,7 @@ const AIGeneratorPage: React.FC = () => {
                                 className={baseInputClasses}
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu chứa tham số m. Tất cả công thức toán phải dùng LaTeX. Cung cấp lời giải chi tiết."
+                                placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu thực tế. Tất cả công thức toán phải dùng LaTeX. Cung cấp lời giải chi tiết."
                             />
                         </div>
                         <button
