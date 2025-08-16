@@ -18,12 +18,22 @@ export interface QuizData {
   questions: Question[];
 }
 
-export interface Lesson {
+export interface QuestionType {
   name: string;
   path: string;
 }
 
-export interface Grade {
+export interface Lesson {
+  name: string;
+  types: QuestionType[];
+}
+
+export interface Chapter {
   name: string;
   lessons: Lesson[];
+}
+
+export interface Grade {
+  name: string;
+  chapters: Chapter[];
 }

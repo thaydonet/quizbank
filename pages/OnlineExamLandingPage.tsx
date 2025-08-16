@@ -1,16 +1,42 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import PlayCircleIcon from '../components/icons/PlayCircleIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import BookOpenIcon from '../components/icons/BookOpenIcon';
+import { QuizService, type SavedQuiz } from '../services/quizService';
 
 const OnlineExamLandingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
+
+  useEffect(() => {
+    setSavedQuizzes(QuizService.getAllQuizzes());
+  }, []);
+
+  const handleStartQuiz = (quiz: SavedQuiz) => {
+    navigate('/exam', { 
+      state: { 
+        questions: quiz.questions, 
+        title: quiz.title,
+        quizId: quiz.id
+      } 
+    });
+  };
+
+  const handleDeleteQuiz = (quizId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (window.confirm('Bạn có chắc chắn muốn xóa đề thi này?')) {
+      QuizService.deleteQuiz(quizId);
+      setSavedQuizzes(QuizService.getAllQuizzes());
+    }
+  };
+
   const examTypes = [
     {
       title: "Thi từ Ngân hàng câu hỏi",
       description: "Chọn câu hỏi từ kho đề sẵn có và thi ngay",
       icon: <BookOpenIcon className="w-8 h-8" />,
-      link: "/",
+      link: "/quiz-bank",
       color: "from-blue-500 to-indigo-600"
     },
     {
@@ -117,6 +143,94 @@ const OnlineExamLandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Saved Quizzes */}
+      {savedQuizzes.length > 0 && (
+        <section className="py-16 bg-white/30 backdrop-blur-sm">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Đề thi đã tạo ({savedQuizzes.length})
+                </h2>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Bạn có chắc chắn muốn xóa tất cả đề thi đã lưu?')) {
+                      QuizService.clearAllQuizzes();
+                      setSavedQuizzes([]);
+                    }
+                  }}
+                  className="text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  Xóa tất cả
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {savedQuizzes.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer group"
+                    onClick={() => handleStartQuiz(quiz)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                          {quiz.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                          {new Date(quiz.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteQuiz(quiz.id, e)}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        title="Xóa đề thi"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Tổng số câu:</span>
+                        <span className="font-semibold text-gray-900">{quiz.questionCount}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        {quiz.mcqCount > 0 && (
+                          <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-center">
+                            TN: {quiz.mcqCount}
+                          </div>
+                        )}
+                        {quiz.msqCount > 0 && (
+                          <div className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-center">
+                            Đ-S: {quiz.msqCount}
+                          </div>
+                        )}
+                        {quiz.saCount > 0 && (
+                          <div className="bg-amber-50 text-amber-700 px-2 py-1 rounded text-center">
+                            TLN: {quiz.saCount}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center pt-4 border-t border-gray-100">
+                      <div className="flex items-center text-indigo-600 font-semibold group-hover:text-indigo-700">
+                        <PlayCircleIcon className="w-5 h-5 mr-2" />
+                        <span>Bắt đầu thi</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* CTA */}
       <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600">
         <div className="container mx-auto px-4 text-center">
@@ -127,11 +241,11 @@ const OnlineExamLandingPage: React.FC = () => {
             Bắt đầu bài thi đầu tiên của bạn ngay hôm nay
           </p>
           <Link
-            to="/"
+            to="/quiz-bank"
             className="inline-flex items-center px-8 py-4 text-lg font-semibold text-green-600 bg-white rounded-xl hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <PlayCircleIcon className="w-6 h-6 mr-3" />
-            Bắt đầu thi ngay
+            Tạo đề thi mới
           </Link>
         </div>
       </section>

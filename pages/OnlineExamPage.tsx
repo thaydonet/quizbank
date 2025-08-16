@@ -523,8 +523,11 @@ const OnlineExamPage: React.FC = () => {
           })()}
 
           <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
+            <Link to="/online-exam" className="w-full sm:w-auto px-6 py-3 text-center text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
+              Quay về danh sách đề thi
+            </Link>
             <Link to="/" className="w-full sm:w-auto px-6 py-3 text-center text-base font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors">
-              Quay về trang chủ
+              Trang chủ
             </Link>
             {isSubmitted ? (
               <button onClick={initializeState} className="w-full sm:w-auto px-8 py-3 text-base font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm">

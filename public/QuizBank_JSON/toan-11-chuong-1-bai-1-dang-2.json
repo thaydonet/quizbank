@@ -1,0 +1,27 @@
+{
+  "title": "Toán 11 - Chương 1 - Bài 1 - Dạng 2: Góc có cùng tia cuối",
+  "questions": [
+    {
+      "id": "mcq1-11-1-1-2",
+      "type": "mcq",
+      "question": "Trong các góc sau, góc nào có cùng tia cuối với góc $30°$?",
+      "option_a": "$390°$",
+      "option_b": "$330°$", 
+      "option_c": "$210°$",
+      "option_d": "$150°$",
+      "correct_option": "A",
+      "explanation": "Hai góc có cùng tia cuối khi chúng hơn kém nhau một bội của $360°$. Ta có $390° = 30° + 360°$, nên góc $390°$ có cùng tia cuối với góc $30°$."
+    },
+    {
+      "id": "msq1-11-1-1-2",
+      "type": "msq",
+      "question": "Trong các góc sau, những góc nào có cùng tia cuối với góc $45°$?",
+      "option_a": "$405°$",
+      "option_b": "$-315°$",
+      "option_c": "$225°$", 
+      "option_d": "$765°$",
+      "correct_option": "A,B,D",
+      "explanation": "Các góc có cùng tia cuối với $45°$ có dạng $45° + k \\cdot 360°$ với $k \\in \\mathbb{Z}$. Kiểm tra: $405° = 45° + 360°$ (đúng), $-315° = 45° - 360°$ (đúng), $225° = 45° + 180°$ (sai), $765° = 45° + 2 \\cdot 360°$ (đúng)."
+    }
+  ]
+}

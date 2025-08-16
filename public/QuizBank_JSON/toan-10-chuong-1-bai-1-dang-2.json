@@ -1,0 +1,27 @@
+{
+  "title": "Toán 10 - Chương 1 - Bài 1 - Dạng 2: Mệnh đề phủ định",
+  "questions": [
+    {
+      "id": "mcq1-10-1-1-2",
+      "type": "mcq",
+      "question": "Mệnh đề phủ định của mệnh đề 'Mọi học sinh đều chăm học' là:",
+      "option_a": "Không có học sinh nào chăm học",
+      "option_b": "Tồn tại học sinh không chăm học", 
+      "option_c": "Mọi học sinh đều không chăm học",
+      "option_d": "Có ít nhất hai học sinh không chăm học",
+      "correct_option": "B",
+      "explanation": "Mệnh đề phủ định của '$\\forall x \\in A, P(x)$' là '$\\exists x \\in A, \\overline{P(x)}$'. Vậy phủ định của 'Mọi học sinh đều chăm học' là 'Tồn tại học sinh không chăm học'."
+    },
+    {
+      "id": "mcq2-10-1-1-2",
+      "type": "mcq",
+      "question": "Mệnh đề phủ định của '$\\exists x \\in \\mathbb{R}, x^2 + 1 = 0$' là:",
+      "option_a": "$\\forall x \\in \\mathbb{R}, x^2 + 1 \\neq 0$",
+      "option_b": "$\\exists x \\in \\mathbb{R}, x^2 + 1 \\neq 0$",
+      "option_c": "$\\forall x \\in \\mathbb{R}, x^2 + 1 = 0$",
+      "option_d": "Không tồn tại $x \\in \\mathbb{R}$ sao cho $x^2 + 1 > 0$",
+      "correct_option": "A",
+      "explanation": "Mệnh đề phủ định của '$\\exists x \\in A, P(x)$' là '$\\forall x \\in A, \\overline{P(x)}$'. Vậy phủ định của '$\\exists x \\in \\mathbb{R}, x^2 + 1 = 0$' là '$\\forall x \\in \\mathbb{R}, x^2 + 1 \\neq 0$'."
+    }
+  ]
+}
