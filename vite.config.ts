@@ -32,14 +32,6 @@ export default defineConfig(({ mode }) => {
         },
         chunkSizeWarningLimit: 1000
       },
-      // Optimize caching for production
-      ...(mode === 'production' && {
-        build: {
-          ...this.build,
-          assetsInlineLimit: 4096,
-          cssCodeSplit: true,
-          sourcemap: false
-        }
-      })
+
     };
 });
