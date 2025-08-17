@@ -29,6 +29,15 @@ const HomePage: React.FC = () => {
       color: "from-purple-500 to-violet-600"
     },
     {
+      icon: <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>,
+      title: "Thi đấu Realtime",
+      description: "Tham gia các cuộc thi đấu trực tiếp với bạn bè, cạnh tranh và học tập cùng nhau (không cần đăng nhập)",
+      link: "/battle/join",
+      color: "from-red-500 to-pink-600"
+    },
+    {
       icon: <CheckCircleIcon className="w-12 h-12 text-orange-600" />,
       title: "Exam Group",
       description: "Tạo nhóm thi cho học sinh, quản lý bài thi và theo dõi kết quả real-time",

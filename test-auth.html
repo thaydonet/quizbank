@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentication</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        input, button { margin: 5px; padding: 8px; }
+        button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>Test Authentication System</h1>
+    
+    <div class="section">
+        <h2>1. Kết nối Supabase</h2>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Đăng ký giáo viên</h2>
+        <input type="email" id="signupEmail" placeholder="Email" value="teacher@test.com">
+        <input type="password" id="signupPassword" placeholder="Password" value="123456">
+        <input type="text" id="signupName" placeholder="Họ tên" value="Giáo viên Test">
+        <input type="text" id="signupSchool" placeholder="Trường" value="THPT Test">
+        <button onclick="signUpTeacher()">Đăng ký giáo viên</button>
+        <div id="signupResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Đăng nhập</h2>
+        <input type="email" id="loginEmail" placeholder="Email" value="teacher@test.com">
+        <input type="password" id="loginPassword" placeholder="Password" value="123456">
+        <button onclick="signIn()">Đăng nhập</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Xác thực giáo viên</h2>
+        <input type="text" id="verificationCode" placeholder="Mã xác thực" value="DEMO2024">
+        <button onclick="verifyTeacher()">Xác thực</button>
+        <div id="verifyResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>5. Kiểm tra trạng thái user</h2>
+        <button onclick="checkUserStatus()">Kiểm tra</button>
+        <div id="statusResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h2>6. Test tạo quiz</h2>
+        <input type="text" id="quizTitle" placeholder="Tiêu đề quiz" value="Quiz Test">
+        <button onclick="createQuiz()">Tạo Quiz</button>
+        <div id="quizResult" class="result"></div>
+    </div>
+
+    <script>
+        // Khởi tạo Supabase client
+        const supabaseUrl = 'https://tvpyhzatqmfhluhvvnoj.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2cHloemF0cW1maGx1aHZ2bm9qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUzNDQ2NDksImV4cCI6MjA3MDkyMDY0OX0.vknJ9SUt4OVyG76PCn80oKI1lE-fjcLxOIQQBqNB2Xs';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testConnection() {
+            try {
+                const { data, error } = await supabase.from('teacher_verification_codes').select('*').limit(1);
+                if (error) throw error;
+                document.getElementById('connectionResult').innerHTML = `<div class="success">✅ Kết nối thành công! Tìm thấy ${data.length} mã xác thực.</div>`;
+            } catch (error) {
+                document.getElementById('connectionResult').innerHTML = `<div class="error">❌ Lỗi kết nối: ${error.message}</div>`;
+            }
+        }
+
+        async function signUpTeacher() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const fullName = document.getElementById('signupName').value;
+            const school = document.getElementById('signupSchool').value;
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            role: 'teacher',
+                            full_name: fullName,
+                            school: school
+                        }
+                    }
+                });
+
+                if (error) throw error;
+                document.getElementById('signupResult').innerHTML = `<div class="success">✅ Đăng ký thành công! User ID: ${data.user?.id}</div>`;
+            } catch (error) {
+                document.getElementById('signupResult').innerHTML = `<div class="error">❌ Lỗi đăng ký: ${error.message}</div>`;
+            }
+        }
+
+        async function signIn() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+                document.getElementById('loginResult').innerHTML = `<div class="success">✅ Đăng nhập thành công! User ID: ${data.user?.id}</div>`;
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = `<div class="error">❌ Lỗi đăng nhập: ${error.message}</div>`;
+            }
+        }
+
+        async function verifyTeacher() {
+            const code = document.getElementById('verificationCode').value;
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Chưa đăng nhập');
+
+                const { data, error } = await supabase.rpc('verify_teacher_with_code', {
+                    user_id: user.id,
+                    verification_code: code.toUpperCase()
+                });
+
+                if (error) throw error;
+                
+                if (data) {
+                    document.getElementById('verifyResult').innerHTML = `<div class="success">✅ Xác thực thành công!</div>`;
+                } else {
+                    document.getElementById('verifyResult').innerHTML = `<div class="error">❌ Mã xác thực không hợp lệ hoặc đã hết hạn</div>`;
+                }
+            } catch (error) {
+                document.getElementById('verifyResult').innerHTML = `<div class="error">❌ Lỗi xác thực: ${error.message}</div>`;
+            }
+        }
+
+        async function checkUserStatus() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Chưa đăng nhập');
+
+                const { data: profile, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) throw error;
+
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="success">
+                        ✅ Thông tin user:<br>
+                        - Email: ${profile.email}<br>
+                        - Role: ${profile.role}<br>
+                        - Verified: ${profile.is_verified}<br>
+                        - School: ${profile.school}<br>
+                        - Teacher Code: ${profile.teacher_code || 'Chưa có'}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('statusResult').innerHTML = `<div class="error">❌ Lỗi: ${error.message}</div>`;
+            }
+        }
+
+        async function createQuiz() {
+            const title = document.getElementById('quizTitle').value;
+            const sampleQuestions = [
+                {
+                    id: '1',
+                    type: 'mcq',
+                    question: 'Câu hỏi test',
+                    options: ['A', 'B', 'C', 'D'],
+                    correctAnswer: 'A'
+                }
+            ];
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) throw new Error('Chưa đăng nhập');
+
+                const { data, error } = await supabase
+                    .from('quizzes')
+                    .insert({
+                        title,
+                        questions: sampleQuestions,
+                        created_by: user.id,
+                        is_public: false
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                document.getElementById('quizResult').innerHTML = `<div class="success">✅ Tạo quiz thành công! ID: ${data.id}</div>`;
+            } catch (error) {
+                document.getElementById('quizResult').innerHTML = `<div class="error">❌ Lỗi tạo quiz: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
