@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MENU_DATA } from '../constants';
 import type { Grade, Chapter, Lesson, QuestionType } from '../types';
 import ChevronDownIcon from './icons/ChevronDownIcon';
@@ -10,9 +10,32 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSelectQuestionType, activeQuestionTypePath }) => {
-  const [openGrades, setOpenGrades] = useState<string[]>([MENU_DATA[0].name]);
-  const [openChapters, setOpenChapters] = useState<string[]>([]);
-  const [openLessons, setOpenLessons] = useState<string[]>([]);
+  // Load từ localStorage hoặc mặc định
+  const [openGrades, setOpenGrades] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sidebar-openGrades');
+    return saved ? JSON.parse(saved) : [MENU_DATA[0].name];
+  });
+  const [openChapters, setOpenChapters] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sidebar-openChapters');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [openLessons, setOpenLessons] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sidebar-openLessons');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Lưu vào localStorage khi thay đổi
+  useEffect(() => {
+    localStorage.setItem('sidebar-openGrades', JSON.stringify(openGrades));
+  }, [openGrades]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-openChapters', JSON.stringify(openChapters));
+  }, [openChapters]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-openLessons', JSON.stringify(openLessons));
+  }, [openLessons]);
 
   const toggleGrade = (gradeName: string) => {
     setOpenGrades(prev =>

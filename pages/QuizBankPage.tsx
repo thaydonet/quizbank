@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import QuestionCard from '../components/QuestionCard';
+import CreateQuizModal from '../components/CreateQuizModal';
 import type { QuizData, Question } from '../types';
 import PrinterIcon from '../components/icons/PrinterIcon';
 import PlayCircleIcon from '../components/icons/PlayCircleIcon';
 import { QuizService } from '../services/quizService';
+import { showToast } from '../components/Toast';
 
 const QuizBankPage: React.FC = () => {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
@@ -26,6 +28,8 @@ const QuizBankPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showCreateQuizModal, setShowCreateQuizModal] = useState(false);
+  const [createQuizLoading, setCreateQuizLoading] = useState(false);
   const navigate = useNavigate();
 
   // Function để tạo unique key cho question (questionTypePath:questionId)
@@ -56,13 +60,26 @@ const QuizBankPage: React.FC = () => {
     return quizData.questions.map(q => q.id);
   }, [quizData]);
 
-  const fetchQuestionTypeData = useCallback(async (path: string) => {
+  const fetchQuestionTypeData = useCallback(async (path: string, forceRefresh: boolean = false) => {
     setIsLoading(true);
     setError(null);
     setActiveQuestionType(path);
 
     try {
-      const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
+      // Thêm cache busting với timestamp và random
+      const cacheBuster = forceRefresh ?
+        `?t=${new Date().getTime()}&r=${Math.random()}` :
+        `?t=${new Date().getTime()}`;
+
+      const response = await fetch(`./QuizBank_JSON/${path}.json${cacheBuster}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+
       if (!response.ok) {
         throw new Error(`Không tìm thấy file: ${path}.json. Vui lòng tạo file này hoặc kiểm tra lại đường dẫn.`);
       }
@@ -88,6 +105,11 @@ const QuizBankPage: React.FC = () => {
   useEffect(() => {
     fetchQuestionTypeData(activeQuestionType);
   }, []);
+
+  // Handler để refresh dữ liệu
+  const handleRefresh = useCallback(() => {
+    fetchQuestionTypeData(activeQuestionType, true);
+  }, [activeQuestionType, fetchQuestionTypeData]);
 
   // Handler để select/deselect question - áp dụng cho global selection
   const handleSelectQuestion = useCallback((id: string) => {
@@ -332,7 +354,7 @@ const QuizBankPage: React.FC = () => {
   }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, allLoadedQuestions, parseQuestionKey, printCount, shuffleQuestions, shuffleMcqOptions]);
 
   // Thi online - sử dụng global selections
-  const handleOnlineExam = useCallback(() => {
+  const handleOnlineExam = useCallback(async () => {
     if (globalSelectedQuestions.length === 0) return;
 
     // Parse keys để lấy questions
@@ -345,34 +367,59 @@ const QuizBankPage: React.FC = () => {
 
     if (questionsForExam.length === 0) return;
 
-    // Tạo title dựa trên số câu hỏi và thời gian
-    const now = new Date();
-    const timeStr = now.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    const title = `Đề thi tổng hợp - ${questionsForExam.length} câu - ${timeStr}`;
+    // Hiển thị modal để nhập tên đề thi
+    setShowCreateQuizModal(true);
+  }, [globalSelectedQuestions, parseQuestionKey, allLoadedQuestions]);
 
-    // Lưu quiz vào localStorage
-    const savedQuiz = QuizService.saveQuiz(title, questionsForExam);
+  // Handler để tạo quiz với tên tùy chỉnh
+  const handleCreateQuiz = useCallback(async (title: string, description: string, isPublic: boolean) => {
+    setCreateQuizLoading(true);
 
-    // Chia nhóm câu hỏi
-    let mcq = questionsForExam.filter(q => q.type === 'mcq');
-    let msq = questionsForExam.filter(q => q.type === 'msq');
-    let sa = questionsForExam.filter(q => q.type === 'sa');
+    try {
+      // Parse keys để lấy questions
+      const questionsForExam = globalSelectedQuestions
+        .map(key => {
+          const { questionTypePath, questionId } = parseQuestionKey(key);
+          return allLoadedQuestions[questionTypePath]?.[questionId];
+        })
+        .filter((q): q is Question => q !== undefined);
 
-    // Trộn câu hỏi từng loại nếu chọn
-    let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
-    let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
-    let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
+      if (questionsForExam.length === 0) {
+        alert('Không có câu hỏi nào được chọn.');
+        return;
+      }
 
-    const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
+      // Lưu quiz vào Supabase với tên tùy chỉnh
+      const savedQuiz = await QuizService.saveQuizWithCustomTitle(title, questionsForExam, isPublic, description);
 
-    navigate('/exam', { state: { questions: shuffledQuestions, title: savedQuiz.title, quizId: savedQuiz.id } });
-  }, [globalSelectedQuestions, allLoadedQuestions, parseQuestionKey, shuffleQuestions, navigate]);
+      if (!savedQuiz) {
+        showToast.error('Có lỗi xảy ra khi lưu đề thi. Vui lòng thử lại.');
+        return;
+      }
+
+      // Hiển thị thông báo thành công với link
+      const quizUrl = `${window.location.origin}/quiz/${savedQuiz.slug}`;
+
+      // Copy link vào clipboard
+      try {
+        await navigator.clipboard.writeText(quizUrl);
+        showToast.success(`Tạo đề thi thành công! Link đã được copy vào clipboard`, 5000);
+      } catch (err) {
+        console.log('Không thể copy vào clipboard:', err);
+        showToast.success(`Tạo đề thi thành công! Link: ${quizUrl}`, 8000);
+      }
+
+      // Đóng modal và reset selections
+      setShowCreateQuizModal(false);
+      setGlobalSelectedQuestions([]);
+
+    } catch (error) {
+      console.error('Error creating quiz:', error);
+      showToast.error('Có lỗi xảy ra khi tạo đề thi. Vui lòng thử lại.');
+    } finally {
+      setCreateQuizLoading(false);
+    }
+  }, [globalSelectedQuestions, parseQuestionKey, allLoadedQuestions]);
 
   // Function để clear tất cả selections
   const handleClearAllSelections = useCallback(() => {
@@ -434,14 +481,24 @@ const QuizBankPage: React.FC = () => {
 
     return (
       <div>
-        <div className="mb-6 md:relative">
-          {/* Title - full width trên mobile */}
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-0 md:pr-40" title={quizData.title}>
+        <div className="mb-6">
+          {/* Title - full width */}
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4" title={quizData.title}>
             {quizData.title}
           </h2>
 
-          {/* Action buttons - xuống dòng trên mobile */}
-          <div className="flex items-center gap-2 md:absolute md:top-0 md:right-0">
+          {/* Action buttons - luôn ở dòng riêng */}
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+              title="Làm mới dữ liệu"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
             <button
               onClick={handleOfflineExam}
               disabled={globalSelectedQuestions.length === 0}
@@ -584,6 +641,21 @@ const QuizBankPage: React.FC = () => {
       <main className="flex-1 p-4 sm:p-8 lg:p-10 overflow-y-auto pt-16 md:pt-8 lg:pt-10">
         {renderContent()}
       </main>
+
+      {/* Create Quiz Modal */}
+      <CreateQuizModal
+        isOpen={showCreateQuizModal}
+        onClose={() => setShowCreateQuizModal(false)}
+        onConfirm={handleCreateQuiz}
+        questions={globalSelectedQuestions
+          .map(key => {
+            const { questionTypePath, questionId } = parseQuestionKey(key);
+            return allLoadedQuestions[questionTypePath]?.[questionId];
+          })
+          .filter((q): q is Question => q !== undefined)
+        }
+        loading={createQuizLoading}
+      />
     </div>
   );
 };

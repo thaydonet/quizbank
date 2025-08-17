@@ -4,14 +4,34 @@ import PlayCircleIcon from '../components/icons/PlayCircleIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import BookOpenIcon from '../components/icons/BookOpenIcon';
 import { QuizService, type SavedQuiz } from '../services/quizService';
+import { useAuth } from '../contexts/AuthContext';
 
 const OnlineExamLandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>([]);
+  const [publicQuizzes, setPublicQuizzes] = useState<SavedQuiz[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSavedQuizzes(QuizService.getAllQuizzes());
-  }, []);
+    loadQuizzes();
+  }, [profile]);
+
+  const loadQuizzes = async () => {
+    setLoading(true);
+    
+    if (profile?.role === 'teacher') {
+      // Giáo viên: lấy quiz của mình
+      const myQuizzes = await QuizService.getAllQuizzes();
+      setSavedQuizzes(myQuizzes);
+    } else {
+      // Học sinh: lấy quiz public
+      const publicQuizzes = await QuizService.getPublicQuizzes();
+      setPublicQuizzes(publicQuizzes);
+    }
+    
+    setLoading(false);
+  };
 
   const handleStartQuiz = (quiz: SavedQuiz) => {
     navigate('/exam', { 
@@ -23,11 +43,13 @@ const OnlineExamLandingPage: React.FC = () => {
     });
   };
 
-  const handleDeleteQuiz = (quizId: string, event: React.MouseEvent) => {
+  const handleDeleteQuiz = async (quizId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (window.confirm('Bạn có chắc chắn muốn xóa đề thi này?')) {
-      QuizService.deleteQuiz(quizId);
-      setSavedQuizzes(QuizService.getAllQuizzes());
+      const success = await QuizService.deleteQuiz(quizId);
+      if (success) {
+        setSavedQuizzes(prev => prev.filter(q => q.id !== quizId));
+      }
     }
   };
 
@@ -90,39 +112,7 @@ const OnlineExamLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Exam Types */}
-      <section className="py-16 bg-white/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Chọn hình thức thi
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {examTypes.map((type, index) => (
-              <Link
-                key={index}
-                to={type.link}
-                className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-100 hover:border-green-200"
-              >
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r ${type.color} text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  {type.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors duration-300">
-                  {type.title}
-                </h3>
-                <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                  {type.description}
-                </p>
-                <div className="flex items-center text-green-600 font-semibold group-hover:text-green-700">
-                  <span>Bắt đầu thi</span>
-                  <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* Features */}
       <section className="py-16">
@@ -143,20 +133,32 @@ const OnlineExamLandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Saved Quizzes */}
-      {savedQuizzes.length > 0 && (
+      {/* Loading */}
+      {loading && (
+        <section className="py-16">
+          <div className="container mx-auto px-4 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải đề thi...</p>
+          </div>
+        </section>
+      )}
+
+      {/* Teacher's Quizzes */}
+      {!loading && profile?.role === 'teacher' && savedQuizzes.length > 0 && (
         <section className="py-16 bg-white/30 backdrop-blur-sm">
           <div className="container mx-auto px-4">
             <div className="max-w-6xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-3xl font-bold text-gray-900">
-                  Đề thi đã tạo ({savedQuizzes.length})
+                  Đề thi của tôi ({savedQuizzes.length})
                 </h2>
                 <button
-                  onClick={() => {
-                    if (window.confirm('Bạn có chắc chắn muốn xóa tất cả đề thi đã lưu?')) {
-                      QuizService.clearAllQuizzes();
-                      setSavedQuizzes([]);
+                  onClick={async () => {
+                    if (window.confirm('Bạn có chắc chắn muốn xóa tất cả đề thi đã tạo?')) {
+                      const success = await QuizService.clearAllQuizzes();
+                      if (success) {
+                        setSavedQuizzes([]);
+                      }
                     }
                   }}
                   className="text-sm text-red-600 hover:text-red-700 font-medium"
@@ -231,24 +233,109 @@ const OnlineExamLandingPage: React.FC = () => {
         </section>
       )}
 
-      {/* CTA */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Sẵn sàng kiểm tra kiến thức?
-          </h2>
-          <p className="text-xl text-green-100 mb-8">
-            Bắt đầu bài thi đầu tiên của bạn ngay hôm nay
-          </p>
-          <Link
-            to="/quiz-bank"
-            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-green-600 bg-white rounded-xl hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            <PlayCircleIcon className="w-6 h-6 mr-3" />
-            Tạo đề thi mới
-          </Link>
-        </div>
-      </section>
+      {/* Student's Public Quizzes */}
+      {!loading && profile?.role === 'student' && publicQuizzes.length > 0 && (
+        <section className="py-16 bg-white/30 backdrop-blur-sm">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Đề thi công khai ({publicQuizzes.length})
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {publicQuizzes.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer group"
+                    onClick={() => handleStartQuiz(quiz)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                          {quiz.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-3">
+                          {new Date(quiz.created_at).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Tổng số câu:</span>
+                        <span className="font-semibold text-gray-900">{quiz.questionCount}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        {quiz.mcqCount > 0 && (
+                          <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-center">
+                            TN: {quiz.mcqCount}
+                          </div>
+                        )}
+                        {quiz.msqCount > 0 && (
+                          <div className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-center">
+                            Đ-S: {quiz.msqCount}
+                          </div>
+                        )}
+                        {quiz.saCount > 0 && (
+                          <div className="bg-amber-50 text-amber-700 px-2 py-1 rounded text-center">
+                            TLN: {quiz.saCount}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center pt-4 border-t border-gray-100">
+                      <div className="flex items-center text-indigo-600 font-semibold group-hover:text-indigo-700">
+                        <PlayCircleIcon className="w-5 h-5 mr-2" />
+                        <span>Bắt đầu thi</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Empty State */}
+      {!loading && (
+        (profile?.role === 'teacher' && savedQuizzes.length === 0) ||
+        (profile?.role === 'student' && publicQuizzes.length === 0)
+      ) && (
+        <section className="py-16">
+          <div className="container mx-auto px-4 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpenIcon className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {profile?.role === 'teacher' ? 'Chưa có đề thi nào' : 'Chưa có đề thi công khai'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {profile?.role === 'teacher' 
+                  ? 'Tạo đề thi đầu tiên từ ngân hàng câu hỏi' 
+                  : 'Chưa có giáo viên nào tạo đề thi công khai'
+                }
+              </p>
+              {profile?.role === 'teacher' && (
+                <Link
+                  to="/quiz-bank"
+                  className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                  <BookOpenIcon className="w-5 h-5 mr-2" />
+                  Tạo đề thi
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+
     </div>
   );
 };

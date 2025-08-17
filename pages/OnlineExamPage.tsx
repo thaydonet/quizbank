@@ -4,6 +4,9 @@ import type { Question } from '../types';
 import MathContent from '../components/MathContent';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
+import { QuizService } from '../services/quizService';
+import { useAuth } from '../contexts/AuthContext';
+import { showToast } from '../components/Toast';
 
 type UserAnswers = { [questionId: string]: string };
 
@@ -16,6 +19,7 @@ interface QuestionWithUniqueId extends Question {
 const OnlineExamPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   
   const [questions, setQuestions] = useState<QuestionWithUniqueId[]>([]);
   const [title, setTitle] = useState<string>('Đề thi Online');
@@ -23,6 +27,8 @@ const OnlineExamPage: React.FC = () => {
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [studentName, setStudentName] = useState<string>('');
   const [studentClass, setStudentClass] = useState<string>('');
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isPublicQuiz, setIsPublicQuiz] = useState<boolean>(false);
   
   // Trộn mảng
   function shuffleArray(array: any[]) {
@@ -114,7 +120,19 @@ const OnlineExamPage: React.FC = () => {
 
   useEffect(() => {
     initializeState();
-  }, [initializeState]);
+
+    // Kiểm tra xem có phải quiz public không
+    if (location.state?.isPublic) {
+      setIsPublicQuiz(true);
+    }
+
+    // Auto-fill thông tin nếu user đã đăng nhập
+    if (profile) {
+      setIsLoggedIn(true);
+      setStudentName(profile.full_name || profile.email || '');
+      setStudentClass(profile.school || '');
+    }
+  }, [initializeState, profile, location.state]);
 
   const handleAnswerChange = (questionUniqueId: string, answer: string, type: 'mcq' | 'sa' | 'msq') => {
     if (isSubmitted) return;
@@ -147,11 +165,18 @@ const OnlineExamPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
-      if(window.confirm('Bạn có chắc chắn muốn nộp bài không?')) {
-        setIsSubmitted(true);
-        window.scrollTo(0, 0);
-      }
+  const handleSubmit = async () => {
+    setIsSubmitted(true);
+    showToast.success('Nộp bài thành công! Đang tính điểm...', 3000);
+
+    // Lưu kết quả thi nếu có quizId và user đã đăng nhập
+    const quizId = location.state?.quizId;
+    if (quizId && profile) {
+      const score = getScore();
+      await QuizService.saveQuizAttempt(quizId, userAnswers, score);
+    }
+
+    window.scrollTo(0, 0);
   };
 
   const getScore = () => {
@@ -161,38 +186,43 @@ const OnlineExamPage: React.FC = () => {
       const userAnswer = userAnswers[q.uniqueId] || '';
       
       if (q.type === 'mcq') {
-        // MCQ: 0.25 điểm nếu đúng
-        if (userAnswer === q.correct_option) {
+        // MCQ: 0.25 điểm nếu đúng, 0 điểm nếu không làm hoặc sai
+        if (userAnswer && userAnswer === q.correct_option) {
           totalScore += 0.25;
         }
+        // Không làm (userAnswer rỗng) hoặc sai → 0 điểm
       } else if (q.type === 'msq') {
-        // MSQ: 0.25 điểm cho mỗi đáp án đúng
-        const correctAnswers = q.correct_option.split(',').map(x => x.trim().toLowerCase());
-        const userAnswerMap: {[key: string]: string} = {};
-        
-        if (userAnswer) {
+        // MSQ: Chỉ tính điểm nếu có trả lời
+        if (userAnswer && userAnswer.trim()) {
+          const correctAnswers = q.correct_option.split(',').map(x => x.trim().toLowerCase());
+          const userAnswerMap: {[key: string]: string} = {};
+
           userAnswer.split(',').forEach(item => {
             const [key, value] = item.split(':');
             if (key && value) userAnswerMap[key.trim().toLowerCase()] = value;
           });
+
+          // Kiểm tra từng đáp án a, b, c, d (chỉ khi có trả lời)
+          ['a', 'b', 'c', 'd'].forEach(option => {
+            const isCorrectlyAnswered = correctAnswers.includes(option);
+            const userAnsweredTrue = userAnswerMap[option] === 'true';
+
+            // Đúng khi: (đáp án đúng và chọn true) hoặc (đáp án sai và chọn false hoặc không chọn)
+            if ((isCorrectlyAnswered && userAnsweredTrue) || (!isCorrectlyAnswered && !userAnsweredTrue)) {
+              totalScore += 0.25;
+            }
+          });
         }
-        
-        // Kiểm tra từng đáp án a, b, c, d
-        ['a', 'b', 'c', 'd'].forEach(option => {
-          const isCorrectlyAnswered = correctAnswers.includes(option);
-          const userAnsweredTrue = userAnswerMap[option] === 'true';
-          
-          // Đúng khi: (đáp án đúng và chọn true) hoặc (đáp án sai và chọn false hoặc không chọn)
-          if ((isCorrectlyAnswered && userAnsweredTrue) || (!isCorrectlyAnswered && !userAnsweredTrue)) {
-            totalScore += 0.25;
-          }
-        });
+        // Không làm (userAnswer rỗng) → 0 điểm
       } else if (q.type === 'sa') {
-        // SA: 0.5 điểm nếu đúng
-        const correctAnswers = q.correct_option.split(';').map(a => a.trim().toLowerCase());
-        if (correctAnswers.includes(userAnswer.trim().toLowerCase())) {
-          totalScore += 0.5;
+        // SA: 0.5 điểm nếu đúng, 0 điểm nếu không làm hoặc sai
+        if (userAnswer && userAnswer.trim()) {
+          const correctAnswers = q.correct_option.split(';').map(a => a.trim().toLowerCase());
+          if (correctAnswers.includes(userAnswer.trim().toLowerCase())) {
+            totalScore += 0.5;
+          }
         }
+        // Không làm (userAnswer rỗng) → 0 điểm
       }
     });
     
@@ -264,7 +294,10 @@ const OnlineExamPage: React.FC = () => {
           {/* Thông tin học sinh */}
           {!isSubmitted && (
             <div className="mb-8 p-6 rounded-xl bg-blue-50 border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-4">Thông tin học sinh (không bắt buộc)</h3>
+              <h3 className="text-lg font-semibold text-blue-800 mb-4">
+                Thông tin học sinh
+                {isLoggedIn && <span className="text-sm font-normal text-blue-600">(đã tự động điền từ tài khoản)</span>}
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Họ và tên:</label>
@@ -274,19 +307,37 @@ const OnlineExamPage: React.FC = () => {
                     onChange={(e) => setStudentName(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Nhập họ và tên"
+                    disabled={isLoggedIn}
                   />
+                  {isLoggedIn && (
+                    <p className="text-xs text-blue-600 mt-1">✓ Lấy từ tài khoản đã đăng nhập</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Lớp:</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Lớp/Trường:</label>
                   <input
                     type="text"
                     value={studentClass}
                     onChange={(e) => setStudentClass(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Nhập lớp"
+                    placeholder="Nhập lớp hoặc trường"
+                    disabled={isLoggedIn}
                   />
+                  {isLoggedIn && (
+                    <p className="text-xs text-blue-600 mt-1">✓ Lấy từ tài khoản đã đăng nhập</p>
+                  )}
                 </div>
               </div>
+              {!isLoggedIn && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    👤 <strong>Khách không đăng nhập:</strong> Bạn có thể làm bài nhưng kết quả sẽ không được lưu.
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    💡 <Link to="/login" className="text-blue-600 hover:underline font-semibold">Đăng nhập</Link> để lưu kết quả và theo dõi tiến độ học tập
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
