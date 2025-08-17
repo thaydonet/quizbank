@@ -43,6 +43,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
     let isInitialized = false;
 
+    // Check if supabase is available
+    if (!supabase) {
+      console.error('Supabase client not initialized');
+      setLoading(false);
+      return;
+    }
+
     // Timeout để tránh loading vô hạn - giảm xuống 3 giây
     const loadingTimeout = setTimeout(() => {
       if (mounted && !isInitialized) {
