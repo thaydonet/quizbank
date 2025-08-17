@@ -1,0 +1,71 @@
+
+import { GoogleGenAI, Type } from "@google/genai";
+
+if (!process.env.API_KEY) {
+    console.warn("API_KEY environment variable not set. AI features will not work.");
+}
+
+let ai: GoogleGenAI | null = null;
+if (process.env.API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+}
+
+export const generateQuizQuestions = async (prompt: string): Promise<string> => {
+    try {
+        if (!ai) {
+            return JSON.stringify({ 
+                error: "API Key chưa được cấu hình", 
+                details: "Vui lòng thiết lập API_KEY để sử dụng tính năng AI" 
+            }, null, 2);
+        }
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                systemInstruction: "Bạn là một giáo viên Toán THPT chuyên nghiệp ở Việt Nam. Nhiệm vụ của bạn là tạo ra các câu hỏi Toán học chất lượng cao bằng tiếng Việt, bao gồm 3 dạng: trắc nghiệm một lựa chọn (mcq), trắc nghiệm nhiều lựa chọn (msq), và trả lời ngắn (sa). Luôn tuân thủ nghiêm ngặt cấu trúc JSON được yêu cầu cho từng loại.\n\n- Dạng 'mcq': câu hỏi có 4 phương án và chỉ có MỘT đáp án đúng. `correct_option` là một ký tự duy nhất ('A', 'B', 'C', hoặc 'D').\n- Dạng 'msq': câu hỏi có 4 phương án và có MỘT hoặc NHIỀU đáp án đúng. `correct_option` là một chuỗi các ký tự đáp án đúng, cách nhau bởi dấu phẩy (ví dụ: 'A,C').\n- Dạng 'sa': câu hỏi điền đáp án. Không có các phương án `option_a, b, c, d`. `correct_option` là đáp án dạng chuỗi (ví dụ: '12.5' hoặc '42').\n\nToàn bộ công thức toán học phải được bao quanh bởi cú pháp LaTeX (ví dụ: $y = x^2$ hoặc $$\\int_0^1 x\\,dx$$). Cung cấp lời giải chi tiết và rõ ràng cho mỗi câu hỏi.",
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: {
+                            type: Type.STRING,
+                            description: "Tiêu đề của bộ câu hỏi, ví dụ: 'Bài 3: Giá trị lớn nhất và nhỏ nhất của hàm số'."
+                        },
+                        questions: {
+                            type: Type.ARRAY,
+                            description: "Danh sách các câu hỏi.",
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    id: { type: Type.STRING, description: "ID duy nhất, ví dụ 'mcq1'." },
+                                    type: { type: Type.STRING, description: "Loại câu hỏi: 'mcq', 'msq', hoặc 'sa'." },
+                                    question: { type: Type.STRING, description: "Nội dung câu hỏi (dùng LaTeX)." },
+                                    option_a: { type: Type.STRING, description: "Phương án A (chỉ cho mcq/msq)." },
+                                    option_b: { type: Type.STRING, description: "Phương án B (chỉ cho mcq/msq)." },
+                                    option_c: { type: Type.STRING, description: "Phương án C (chỉ cho mcq/msq)." },
+                                    option_d: { type: Type.STRING, description: "Phương án D (chỉ cho mcq/msq)." },
+                                    correct_option: { type: Type.STRING, description: "Đáp án đúng. Dạng 'A' cho mcq; 'A,C' cho msq; 'câu trả lời' cho sa." },
+                                    explanation: { type: Type.STRING, description: "Lời giải chi tiết (dùng LaTeX)." }
+                                },
+                                required: ["id", "type", "question", "correct_option", "explanation"]
+                            }
+                        }
+                    },
+                    required: ["title", "questions"]
+                }
+            }
+        });
+
+        const jsonString = response.text.trim();
+        JSON.parse(jsonString); // Basic validation
+        return JSON.stringify(JSON.parse(jsonString), null, 2);
+
+    } catch (error) {
+        console.error("Error generating quiz questions:", error);
+        if (error instanceof Error) {
+            return JSON.stringify({ error: "Không thể tạo câu hỏi từ AI", details: error.message }, null, 2);
+        }
+        return JSON.stringify({ error: "Đã xảy ra lỗi không xác định" }, null, 2);
+    }
+};
