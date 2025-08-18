@@ -170,11 +170,13 @@ const BattleRoomPage: React.FC = () => {
       
       // Find current participant
       const participant = participantsData.find(p => p.user_id === user?.id);
-      setCurrentParticipant(participant || null);
-
-      // Nếu chưa đăng nhập và chưa tham gia, hiển thị form guest
-      if (!user && !participant) {
-        setShowGuestForm(true);
+      if (participant) {
+        setCurrentParticipant(participant);
+      } else {
+        // Nếu chưa có participant và chưa đăng nhập, hiển thị form guest
+        if (!user) {
+          setShowGuestForm(true);
+        }
       }
       
     } catch (error) {
@@ -249,11 +251,13 @@ const BattleRoomPage: React.FC = () => {
     if (!room || !guestName.trim()) return;
 
     try {
-      const participant = await BattleService.joinBattleRoom(room.room_code, guestName.trim());
-      if (participant) {
-        setCurrentParticipant(participant);
+      const result = await BattleService.joinBattleRoom(room.room_code, guestName.trim());
+      if (result.success && result.participant) {
+        setCurrentParticipant(result.participant);
         setShowGuestForm(false);
         loadRoomData();
+      } else {
+        setError(result.message || 'Không thể tham gia phòng thi đấu');
       }
     } catch (error) {
       console.error('Error joining as guest:', error);
@@ -356,7 +360,7 @@ const BattleRoomPage: React.FC = () => {
             <div className="text-right">
               <div className="text-sm text-gray-600">Người dùng</div>
               <div className="font-semibold text-gray-900">
-                {user ? (profile?.full_name || user.email) : 'Khách'}
+                {currentParticipant ? currentParticipant.display_name : 'Chưa tham gia'}
               </div>
               <button
                 onClick={() => navigate('/')}
@@ -445,6 +449,74 @@ const BattleRoomPage: React.FC = () => {
                           </button>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* Multi-choice questions (MSQ) */}
+                  {currentQuestion.type === 'msq' && (
+                    <div className="space-y-4">
+                      {['a', 'b', 'c', 'd'].map((option) => {
+                        const optionText = currentQuestion[`option_${option}` as keyof Question] as string;
+                        if (!optionText || optionText.trim() === '') return null;
+
+                        return (
+                          <div key={option} className="border rounded-lg p-4 bg-white">
+                            <div className="mb-3">
+                              <span className="font-bold text-gray-700">{option})</span>
+                              <span className="ml-2 text-gray-800">
+                                <MathContent content={optionText} />
+                              </span>
+                            </div>
+                            <div className="flex gap-4 ml-6">
+                              <label className={`flex items-center p-2 rounded border transition-all duration-200 cursor-pointer ${
+                                selectedAnswer === `${option}:true` ? 'bg-green-100 border-green-400' : 'bg-white hover:bg-gray-50'
+                              }`}>
+                                <input
+                                  type="radio"
+                                  name={`${currentQuestion.id}_${option}`}
+                                  value={`${option}:true`}
+                                  onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
+                                  disabled={isAnswered}
+                                  checked={selectedAnswer === `${option}:true`}
+                                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                                />
+                                <span className="ml-2 text-green-700 font-semibold">Đúng</span>
+                              </label>
+                              <label className={`flex items-center p-2 rounded border transition-all duration-200 cursor-pointer ${
+                                selectedAnswer === `${option}:false` ? 'bg-red-100 border-red-400' : 'bg-white hover:bg-gray-50'
+                              }`}>
+                                <input
+                                  type="radio"
+                                  name={`${currentQuestion.id}_${option}`}
+                                  value={`${option}:false`}
+                                  onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
+                                  disabled={isAnswered}
+                                  checked={selectedAnswer === `${option}:false`}
+                                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                                />
+                                <span className="ml-2 text-red-700 font-semibold">Sai</span>
+                              </label>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Short answer questions (SA) */}
+                  {currentQuestion.type === 'sa' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nhập câu trả lời:
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedAnswer}
+                        onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
+                        disabled={isAnswered}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Nhập đáp án..."
+                      />
                     </div>
                   )}
                 </div>

@@ -97,8 +97,7 @@ const JoinBattlePage: React.FC = () => {
               maxLength={30}
             />
             <p className="text-xs text-gray-500 mt-2">
-              Tên này sẽ hiển thị trên bảng xếp hạng
-              {user && <span className="text-blue-600"> • Đã đăng nhập: {user.email}</span>}
+              Tên này sẽ hiển thị trên bảng xếp hạng • Không cần đăng nhập
             </p>
           </div>
 

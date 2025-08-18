@@ -260,10 +260,6 @@ export class BattleService {
   // Tính điểm dựa trên thời gian - đúng 10 điểm, sai 0 điểm
   private static calculatePoints(timeTaken: number, timeLimit: number): number {
     return 10; // Đúng = 10 điểm, sai = 0 điểm (đã check ở trên)
-    
-    // Bonus points for speed (max 50 bonus points)
-    const timeBonus = Math.round((timeLimitMs - timeTaken) / (timeLimitMs / 50));
-    return basePoints + timeBonus;
   }
 
   // Subscribe to real-time updates
