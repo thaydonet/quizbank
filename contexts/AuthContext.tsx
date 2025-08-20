@@ -127,6 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Add retry logic for profile fetching
+      let retries = 3;
+      let data = null;
+      let error = null;
+
+      while (retries > 0 && !data) {
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -151,18 +157,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string, 
     password: string, 
     userData: { role: 'teacher' | 'student'; full_name: string; school?: string }
-  ) => {
+        const result = await supabase
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            role: userData.role,
-            full_name: userData.full_name,
-            school: userData.school || null
-          }
+        data = result.data;
+        error = result.error;
+
+        if (error && retries > 1) {
+          console.warn(`Profile fetch attempt failed, retrying... (${retries - 1} attempts left)`, error);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          retries--;
+        } else {
+          break;
         }
+      }
+
+      if (error) {
+        console.error('Error fetching user profile after retries:', error);
+        // If it's a permission error, try to sign out and clear state
+        if (error.code === '42501' || error.message?.includes('permission denied')) {
+          console.warn('Permission denied, clearing auth state');
+          await supabase.auth.signOut();
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+        }
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
       });
 
       if (error) throw error;
@@ -190,16 +216,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
+      // Clear local state first to prevent UI issues
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+
       // Sign out from Supabase first
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
       }
-
-      // Clear local state
-      setUser(null);
-      setProfile(null);
-      setSession(null);
 
       // Clear storage
       localStorage.clear();
@@ -216,6 +242,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = '/';
+    } finally {
+      setLoading(false);
     }
   };
 
