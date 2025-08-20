@@ -133,36 +133,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let error = null;
 
       while (retries > 0 && !data) {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        setProfile(null);
-      } else {
-        setProfile(data);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setProfile(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signUp = async (
-    email: string, 
-    password: string, 
-    userData: { role: 'teacher' | 'student'; full_name: string; school?: string }
         const result = await supabase
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
         data = result.data;
         error = result.error;
 
@@ -189,6 +165,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setProfile(data);
       }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (
+    email: string, 
+    password: string, 
+    userData: { role: 'teacher' | 'student'; full_name: string; school?: string }
+  ) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData
+        }
       });
 
       if (error) throw error;
@@ -216,16 +212,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
-      // Clear local state first to prevent UI issues
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-
       // Sign out from Supabase first
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
       }
+
+      // Clear local state
+      setUser(null);
+      setProfile(null);
+      setSession(null);
 
       // Clear storage
       localStorage.clear();
@@ -242,8 +238,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = '/';
-    } finally {
-      setLoading(false);
     }
   };
 
