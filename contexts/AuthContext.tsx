@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .eq('id', userId)
           .single();
-
+        
         data = result.data;
         error = result.error;
 
@@ -212,16 +212,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
 
+      // Clear local state first to prevent UI issues
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+
       // Sign out from Supabase first
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
       }
-
-      // Clear local state
-      setUser(null);
-      setProfile(null);
-      setSession(null);
 
       // Clear storage
       localStorage.clear();
@@ -238,6 +238,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = '/';
+    } finally {
+      setLoading(false);
     }
   };
 
