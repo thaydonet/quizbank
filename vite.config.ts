@@ -12,26 +12,6 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      },
-      // Optimize for development
-      server: {
-        hmr: {
-          overlay: false
-        }
-      },
-      // Optimize build
-      build: {
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              vendor: ['react', 'react-dom'],
-              router: ['react-router-dom'],
-              supabase: ['@supabase/supabase-js']
-            }
-          }
-        },
-        chunkSizeWarningLimit: 1000
-      },
-
+      }
     };
 });
