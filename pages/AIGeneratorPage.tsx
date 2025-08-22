@@ -14,7 +14,7 @@ const AIGeneratorPage: React.FC = () => {
             setError('Vui lòng nhập yêu cầu để tạo câu hỏi.');
             return;
         }
-        if (!process.env.API_KEY) {
+        if (!import.meta.env.VITE_API_KEY) {
             setError('Lỗi cấu hình: API_KEY chưa được thiết lập. Không thể gọi AI.');
             setGeneratedJson(JSON.stringify({ error: "API_KEY is not configured. Please set the environment variable." }, null, 2));
             return;

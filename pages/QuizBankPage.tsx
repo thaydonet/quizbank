@@ -615,17 +615,18 @@ const QuizBankPage: React.FC = () => {
 
       if (exportFormat === 'docx') {
         // Tạo file Word
-        createWordDocument(questionsToPrint, mcqQ, msqQ, saQ, d, dateStr)
-          .then(async (doc) => {
-            const buffer = await Packer.toBuffer(doc);
-            const blob = new Blob([buffer], {
-              type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        try {
+          const doc = createWordDocument(questionsToPrint, mcqQ, msqQ, saQ, d, dateStr);
+          Packer.toBlob(doc)
+            .then((blob) => {
+              saveAs(blob, `de-thi-tong-hop-${d}.docx`);
+            })
+            .catch(error => {
+              console.error('Lỗi tạo file Word:', error);
             });
-            saveAs(blob, `de-thi-tong-hop-${d}.docx`);
-          })
-          .catch(error => {
-            console.error('Lỗi tạo file Word:', error);
-          });
+        } catch (error) {
+          console.error('Lỗi tạo document:', error);
+        }
         continue;
       }
 

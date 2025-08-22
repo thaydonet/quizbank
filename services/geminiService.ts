@@ -1,13 +1,13 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
-if (!process.env.API_KEY) {
-    console.warn("API_KEY environment variable not set. AI features will not work.");
+const apiKey = import.meta.env.VITE_API_KEY;
+if (!apiKey) {
+    console.warn("VITE_API_KEY environment variable not set. AI features will not work.");
 }
 
 let ai: GoogleGenAI | null = null;
-if (process.env.API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+if (apiKey) {
+    ai = new GoogleGenAI({ apiKey });
 }
 
 export const generateQuizQuestions = async (prompt: string): Promise<string> => {

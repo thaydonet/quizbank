@@ -10,7 +10,7 @@
       "option_c": "$y=2x+1$",
       "option_d": "$y=\\frac{1}{x}$",
       "correct_option": "C",
-      "explanation": "Để xét tính đồng biến, nghịch biến của hàm số, ta cần tính đạo hàm của hàm số đó. Hàm số $y=ax+b$ với $a>0$ luôn đồng biến trên $\\mathbb{R}$. Hàm số $y=2x+1$ có $y'=2 > 0$ với mọi $x \\in \\mathbb{R}$. Vậy hàm số $y=2x+1$ đồng biến trên $\\mathbb{R}$."
+      "explanation": "Để xét tính đồng biến, nghịch biến của hàm số, ta cần tính đạo hàm của hàm số đó.\\n Hàm số $y=ax+b$ với $a>0$ luôn đồng biến trên $\\mathbb{R}$.<br> Hàm số $y=2x+1$ có $y'=2 > 0$ với mọi $x \\in \\mathbb{R}$. \\\\n Vậy hàm số $y=2x+1$ đồng biến trên $\\mathbb{R}$."
     },
     {
       "id": "mcq2-12-1-1-1",

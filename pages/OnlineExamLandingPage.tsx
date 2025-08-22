@@ -61,80 +61,24 @@ const OnlineExamLandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4 text-center">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <PlayCircleIcon className="w-20 h-20 text-green-600 mx-auto mb-6" />
-            </div>
-            <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
-              Thi Online
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600">
-                Toán THPT
-              </span>
-            </h1>
-            <p className="text-xl text-gray-600 mb-12 leading-relaxed">
-              Hệ thống thi trực tuyến hiện đại với công nghệ chấm điểm tự động
-              <br />
-              <span className="text-green-600 font-semibold">Nhanh chóng • Chính xác • Tiện lợi</span>
-            </p>
-          </div>
-        </div>
-      </section>
+     <section className="py-10">
+  <div className="container mx-auto px-4 text-center">
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-4">
+        <PlayCircleIcon className="w-16 h-16 text-green-600 mx-auto mb-4" />
+      </div>
+      <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+        Thi Online <span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600"> Toán THPT </span>
+      </h2>
+      <p className="text-lg text-gray-500 mb-5 leading-relaxed">
+        Hệ thống thi trực tuyến hiện đại với công nghệ chấm điểm tự động
+        <br />
+        <span className="text-green-500 font-semibold">Nhanh chóng • Chính xác • Tiện lợi</span>
+      </p>
+    </div>
+  </div>
+</section>
 
-      {/* Exam Types */}
-      <section className="py-16 bg-white/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Chọn hình thức thi
-          </h2>
-          <div className="grid grid-cols-1 gap-8 max-w-2xl mx-auto">
-            {examTypes.map((type, index) => (
-              <Link
-                key={index}
-                to={type.link}
-                className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-100 hover:border-green-200"
-              >
-                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-r ${type.color} text-white mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  {type.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-green-600 transition-colors duration-300">
-                  {type.title}
-                </h3>
-                <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                  {type.description}
-                </p>
-                <div className="flex items-center text-green-600 font-semibold group-hover:text-green-700">
-                  <span>Bắt đầu thi</span>
-                  <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-              Tính năng nổi bật
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <div key={index} className="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                  <CheckCircleIcon className="w-6 h-6 text-green-600 mr-3 flex-shrink-0" />
-                  <span className="text-gray-700">{feature}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Saved Quizzes */}
       {savedQuizzes.length > 0 && (
@@ -224,24 +168,7 @@ const OnlineExamLandingPage: React.FC = () => {
         </section>
       )}
 
-      {/* CTA */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">
-            Sẵn sàng kiểm tra kiến thức?
-          </h2>
-          <p className="text-xl text-green-100 mb-8">
-            Bắt đầu bài thi đầu tiên của bạn ngay hôm nay
-          </p>
-          <Link
-            to="/quiz-bank"
-            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-green-600 bg-white rounded-xl hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            <PlayCircleIcon className="w-6 h-6 mr-3" />
-            Tạo đề thi mới
-          </Link>
-        </div>
-      </section>
+         
     </div>
   );
 };
