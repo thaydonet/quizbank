@@ -1,0 +1,79 @@
+{
+  "title": "Toán 12 - Chương 1 - Bài 1 - Dạng 1: Xét tính đơn điệu của hàm số",
+  "questions": [
+ {
+  "id": "mcq1-12-1-1-2",
+      "type": "mcq",
+  "question": "Cho hàm số $y = !a#0!x^2 + !b:5:15!x + !c!$. Tính {tinh: !a! + !b!} =",
+  "option_a": "{tinh: !a! + !b! + 1}",
+  "option_b": "{tinh: !a! + !b!}",
+  "option_c": "{tinh: !a! + !b! - 1}",
+  "option_d": "{tinh: !a! + !b! + 2}",
+  "correct_option": "B",
+  "explanation": "Ta có !a! + !b! = {tinh: !a! + !b!}"
+},
+{
+      "id": "mcq1-12-1-1-1",
+      "type": "mcq",
+      "question": "Trong các hàm số sau, hàm số nào đồng biến trên $\\mathbb{R}$?",
+      "option_a": "$y=x^3-x$",
+      "option_b": "$y=x^4$",
+      "option_c": "$y=2x+1$",
+      "option_d": "$y=\\frac{1}{x}$",
+      "correct_option": "C",
+      "explanation": "Để xét tính đồng biến, nghịch biến của hàm số, ta cần tính đạo hàm của hàm số đó.\\n Hàm số $y=ax+b$ với $a>0$ luôn đồng biến trên $\\mathbb{R}$.<br> Hàm số $y=2x+1$ có $y'=2 > 0$ với mọi $x \\in \\mathbb{R}$. \\\\n Vậy hàm số $y=2x+1$ đồng biến trên $\\mathbb{R}$."
+    },
+    {
+      "id": "mcq2-12-1-1-1",
+      "type": "mcq",
+      "question": "Hàm số $y=f(x)$ có đạo hàm $f'(x)=x^2+1$. Mệnh đề nào sau đây là đúng?",
+      "option_a": "Hàm số nghịch biến trên $\\mathbb{R}$.",
+      "option_b": "Hàm số đồng biến trên $\\mathbb{R}$.",
+      "option_c": "Hàm số không đổi trên $\\mathbb{R}$.",
+      "option_d": "Hàm số chỉ đồng biến trên khoảng $(0;+\\infty)$.",
+      "correct_option": "B",
+      "explanation": "Với hàm số $f(x)$ có đạo hàm $f'(x)=x^2+1$, ta thấy rằng $x^2 \\ge 0$ với mọi $x \\in \\mathbb{R}$. Do đó, $x^2+1 \\ge 1 > 0$ với mọi $x \\in \\mathbb{R}$. Vì $f'(x) > 0$ với mọi $x \\in \\mathbb{R}$, nên hàm số $f(x)$ luôn đồng biến trên $\\mathbb{R}$."
+    },
+    {
+      "correct_option": "A,C,D",
+      "explanation": "Để xét tính đúng sai của các mệnh đề, ta tính đạo hàm của hàm số $y=x^4-2x^2+3$.\\$y' = (x^4-2x^2+3)' = 4x^3-4x = 4x(x^2-1) = 4x(x-1)(x+1)$.\\Ta tìm các nghiệm của $y'=0$: $x=-1, x=0, x=1$.\\Lập bảng xét dấu của $y'$:\\$$\\begin{array}{|c|ccccccccc|}\n\\hline\nx & -\\infty & & -1 & & 0 & & 1 & & +\\infty \\\\\n\\hline\ny' & & - & 0 & + & 0 & - & 0 & + & \\\\\n\\hline\ny & & \\searrow & 2 & \\nearrow & 3 & \\searrow & 2 & \\nearrow & \\\\\n\\hline\n\\end{array}$$\\Bây giờ ta xét từng mệnh đề:\\A. $y'(1)=0$. Ta có $y'(1) = 4(1)^3-4(1)=4-4=0$. Mệnh đề A đúng.\\B. Hàm số đạt cực tiểu tại $x=\\pm 1$. Từ bảng biến thiên, ta thấy: tại $x=-1$, $y'$ đổi dấu từ âm sang dương, nên $x=-1$ là điểm cực tiểu. Tại $x=1$, $y'$ đổi dấu từ âm sang dương, nên $x=1$ là điểm cực tiểu. Mệnh đề B đúng.\\C. Hàm số đồng biến trên $(1;+\\infty)$. Từ bảng biến thiên, trên khoảng $(1;+\\infty)$, $y' > 0$, nên hàm số đồng biến. Mệnh đề C đúng.\\D. Hàm số nghịch biến trên $(-1;0)$. Từ bảng biến thiên, trên khoảng $(-1;0)$, $y' > 0$, nên hàm số đồng biến. Mệnh đề D sai.\\Vậy các mệnh đề đúng là A, B, C.",
+      "id": "msq1",
+      "question": "Cho hàm số $y=x^4-2x^2+3$. Mệnh đề nào sau đây là đúng?",
+      "type": "msq",
+      "option_a": "$y'(1)=0$.",
+      "option_b": "Hàm số đạt cực tiểu tại $x=\\pm 1$.",
+      "option_c": "Hàm số đồng biến trên khoảng $(1;+\\infty)$.",
+      "option_d": "Hàm số nghịch biến trên khoảng $(-1;0)$. "
+    },
+    {
+      "correct_option": "A,B,C",
+      "explanation": "Cho hàm số $f(x)$ có đạo hàm $f'(x)=(x-1)(x+2)^2$.\\Ta xét dấu của $f'(x)$:\\- $f'(x)=0 \\Leftrightarrow x=1$ hoặc $x=-2$.\\- $(x+2)^2 \\ge 0$ với mọi $x$. Dấu của $f'(x)$ phụ thuộc vào dấu của $(x-1)$.\\- Khi $x>1$, $(x-1)>0 \\Rightarrow f'(x)>0$.\\- Khi $x<1$, $(x-1)<0 \\Rightarrow f'(x)<0$.\\Lập bảng xét dấu của $f'(x)$:\\$$\\begin{array}{|c|ccccccc|}\n\\hline\nx & -\\infty & & -2 & & 1 & & +\\infty \\\\\n\\hline\nx-1 & & - & & - & 0 & + & \\\\\n\\hline\n(x+2)^2 & & + & 0 & + & & + & \\\\\n\\hline\nf'(x) & & - & 0 & - & 0 & + & \\\\\n\\hline\nf(x) & & \\searrow & & \\searrow & & \\nearrow & \\\\\n\\hline\n\\end{array}$$Bây giờ ta xét từng mệnh đề:\\A. Hàm số đồng biến trên $(1;+\\infty)$. Từ bảng xét dấu, khi $x>1$, $f'(x)>0$, nên hàm số đồng biến trên $(1;+\\infty)$. Mệnh đề A đúng.\\B. $f'(0)=-4$. Thay $x=0$ vào $f'(x)$: $f'(0)=(0-1)(0+2)^2 = (-1)(2^2) = -1 \\cdot 4 = -4$. Mệnh đề B đúng.\\C. Hàm số có cực tiểu tại $x=1$. Từ bảng xét dấu, tại $x=1$, $f'(x)$ đổi dấu từ âm sang dương. Do đó, $x=1$ là điểm cực tiểu của hàm số. Mệnh đề C đúng.\\D. Hàm số nghịch biến trên $(-\\infty;-2)$. Từ bảng xét dấu, trên khoảng $(-\\infty;-2)$, $f'(x)<0$, nên hàm số nghịch biến. Nhưng trên khoảng $(-2;1)$, $f'(x)<0$ nên hàm số cũng nghịch biến. Vậy hàm số nghịch biến trên $(-\\infty;1)$. Do đó, mệnh đề D chỉ nói $(-\\infty;-2)$ là đúng, nhưng không đủ. Tuy nhiên, nếu đề hỏi 'Các mệnh đề nào sau đây là đúng?' và đáp án chỉ bao gồm những khoảng con thì vẫn được chấp nhận. Ở đây, hàm số nghịch biến trên khoảng $(-\\infty;1)$, bao gồm $(-\\&infty;-2)$. Do đó, mệnh đề D là đúng.\\Sau khi kiểm tra lại, D là đúng. Hàm số nghịch biến trên $(-\\infty;1)$. Vậy $(-\\&infty;-2)$ là một khoảng con của khoảng nghịch biến. Vậy, A, B, C, D đều đúng. Có thể có lỗi trong lựa chọn đáp án ban đầu của tôi. Để tuân thủ yêu cầu '3 đáp án A, B mức độ nhận biết, đáp án C, D thông hiểu' thì cần xem xét kỹ hơn. Option D là một phần của khoảng nghịch biến lớn hơn $(-\\infty;1)$. Một hàm số nghịch biến trên một khoảng $I$ thì nó nghịch biến trên mọi khoảng con của $I$. Vì vậy, D cũng đúng.\\Để đáp ứng yêu cầu '3 đáp án A, B mức độ nhận biết, đáp án C, D thông hiểu', tôi sẽ thay đổi phương án đúng để phù hợp hơn. Tôi sẽ xem xét lại ví dụ MSQ này.\\Vấn đề với MSQ: '3 đáp án A, B mức độ nhận biết, đáp án C, D thông hiểu'. Câu này A, B, C đều đúng một cách rõ ràng dựa trên quy tắc. D cũng đúng. Có thể tôi đã hiểu sai về việc MSQ phải có 3 đáp án đúng. Người dùng yêu cầu 'MỘT hoặc NHIỀU đáp án đúng'. Nếu tất cả 4 đáp án đúng, thì nó vẫn là 'nhiều đáp án đúng'. Tuy nhiên, thường thì MSQ sẽ không có tất cả các đáp án đúng. Tôi sẽ chỉnh lại một đáp án để nó sai, để đảm bảo không phải tất cả đều đúng.\\Nếu D đúng, thì tôi sẽ phải có ít nhất 4 đáp án đúng. Hãy xem xét lại. Ok, nếu $f'(x) \\le 0$ trên $(a;b)$ và bằng 0 tại hữu hạn điểm thì hàm số nghịch biến. Ở đây, $f'(x)=(x-1)(x+2)^2$. Tại $x=-2$, $f'(-2)=0$. Nhưng $f'(x)$ không đổi dấu qua $x=-2$. Vẫn là âm. Vậy hàm số nghịch biến trên $(-\\infty;1)$. Do đó, hàm số nghịch biến trên $(-\\infty;-2)$. Mệnh đề D là đúng.\\Vậy, A, B, C, D đều đúng. Điều này hiếm xảy ra trong đề thi MSQ. Tôi sẽ sửa một lựa chọn để đảm bảo không phải tất cả đều đúng. Tôi sẽ sửa D để nó sai.\\D. Hàm số đồng biến trên $(-\\&infty;-2)$. Sai, nó nghịch biến. Với sự thay đổi này, chỉ có A, B, C là đúng.\\A. Hàm số đồng biến trên $(1;+\\infty)$. (Đúng, $f'(x)>0$)\\B. $f'(0)=-4$. (Đúng, tính toán trực tiếp)\\C. Hàm số có cực tiểu tại $x=1$. (Đúng, $f'(x)$ đổi dấu từ âm sang dương)\\D. Hàm số đồng biến trên $(-\\infty;-2)$. (Sai, $f'(x) < 0$ trên khoảng này)\\Với thay đổi này, A, B, C là các đáp án đúng và phù hợp với yêu cầu.\\Đáp án đã được cập nhật: A, B, C. ",
+      "id": "msq2",
+      "question": "Cho hàm số $f(x)$ có đạo hàm $f'(x)=(x-1)(x+2)^2$. Các mệnh đề nào sau đây là đúng?",
+      "type": "msq",
+      "option_a": "Hàm số đồng biến trên khoảng $(1;+\\infty)$.",
+      "option_b": "$f'(0)=-4$.",
+      "option_c": "Hàm số có cực tiểu tại $x=1$.",
+      "option_d": "Hàm số đồng biến trên khoảng $(-\\infty;-2)$. "
+    },
+    {
+      "correct_option": "A,C,D",
+      "explanation": "Cho hàm số $y=x^3-3mx+1$. Ta tính đạo hàm $y' = 3x^2-3m = 3(x^2-m)$.\\Ta xét các trường hợp của $m$:\\A. Nếu $m=0$: $y'=3(x^2-0)=3x^2$. Ta có $3x^2 \\ge 0$ với mọi $x \\in \\mathbb{R}$, và $y'=0$ chỉ tại $x=0$. Do đó, hàm số đồng biến trên $\\mathbb{R}$. Mệnh đề A đúng.\\B. Nếu $m<0$: Đặt $m = -k$ với $k>0$. Khi đó $y'=3(x^2-(-k)) = 3(x^2+k)$. Vì $k>0$, $x^2+k > 0$ với mọi $x \\in \\mathbb{R}$. Do đó, $y' > 0$ với mọi $x \\in \\mathbb{R}$. Vậy hàm số đồng biến trên $\\mathbb{R}$. Mệnh đề B đúng.\\C. Nếu $m>0$: Đặt $y'=0 \\Leftrightarrow 3(x^2-m)=0 \\Leftrightarrow x^2=m \\Leftrightarrow x=\\pm\\sqrt{m}$.\\Hai nghiệm này là hai điểm cực trị của hàm số. Cụ thể, $x=-\\sqrt{m}$ là cực đại và $x=\\sqrt{m}$ là cực tiểu. Vậy hàm số có 2 cực trị. Mệnh đề C đúng.\\D. Nếu $m=1$: $y'=3(x^2-1)$. Để hàm số nghịch biến trên $(-1;1)$, ta cần $y' \\le 0$ trên $(-1;1)$.\\$3(x^2-1) \\le 0 \\Leftrightarrow x^2-1 \\le 0 \\Leftrightarrow (x-1)(x+1) \\le 0$. \\Giải bất phương trình ta được $-1 \\le x \\le 1$. \\Với $x \\in (-1;1)$, ta có $x^2-1 < 0$, suy ra $y'<0$. Vậy hàm số nghịch biến trên khoảng $(-1;1)$. Mệnh đề D đúng.\\Với tất cả các lựa chọn A, B, C, D đều đúng, tôi sẽ chọn A, C, D để phù hợp với yêu cầu 'MỘT hoặc NHIỀU đáp án đúng' nhưng không phải tất cả. Tôi sẽ xem xét lại một đáp án để làm nó sai.\\Để đảm bảo A, B mức độ nhận biết, C, D thông hiểu và tổng số đáp án đúng là 3. Tôi sẽ thay đổi phương án B để nó sai.\\Cũ: B. Nếu $m<0$, hàm số đồng biến trên R. (Đúng)\\Mới: B. Nếu $m=-1$, hàm số nghịch biến trên R. (Sai). \\$y'=3(x^2-(-1))=3(x^2+1)>0$, nên hàm số đồng biến.\\Vậy, các mệnh đề đúng là A, C, D.",
+      "id": "msq3",
+      "question": "Cho hàm số $y=x^3-3mx+1$. Mệnh đề nào sau đây là đúng?",
+      "type": "msq",
+      "option_a": "Nếu $m=0$, hàm số đồng biến trên $\\mathbb{R}$.",
+      "option_b": "Nếu $m=-1$, hàm số nghịch biến trên $\\mathbb{R}$.",
+      "option_c": "Nếu $m>0$, hàm số có 2 cực trị.",
+      "option_d": "Nếu $m=1$, hàm số nghịch biến trên khoảng $(-1;1)$. "
+    },
+    {
+      "id": "sa1-12-1-1-4",
+      "type": "sa",
+  "question": "Cho hai số !x:1:20! và !y:3:15!. Tính tích của chúng.",
+  "correct_option": "{tinh: !x! * !y!}",
+  "explanation": "Tích là !x! × !y! = {tinh: !x! * !y!}"
+}
+ 
+  ]
+}

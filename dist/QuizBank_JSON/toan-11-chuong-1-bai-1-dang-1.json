@@ -1,0 +1,27 @@
+{
+  "title": "Toán 11 - Chương 1 - Bài 1 - Dạng 1: Đổi đơn vị góc",
+  "questions": [
+    {
+      "id": "mcq1-11-1-1-1",
+      "type": "mcq",
+      "question": "Đổi $60°$ sang radian.",
+      "option_a": "$\\frac{\\pi}{6}$",
+      "option_b": "$\\frac{\\pi}{4}$",
+      "option_c": "$\\frac{\\pi}{3}$",
+      "option_d": "$\\frac{\\pi}{2}$",
+      "correct_option": "C",
+      "explanation": "Ta có công thức đổi: $\\alpha$ (radian) = $\\frac{\\pi \\cdot \\alpha°}{180°}$. Vậy $60° = \\frac{\\pi \\cdot 60°}{180°} = \\frac{\\pi}{3}$ radian."
+    },
+    {
+      "id": "mcq2-11-1-1-1",
+      "type": "mcq", 
+      "question": "Đổi $\\frac{3\\pi}{4}$ radian sang độ.",
+      "option_a": "120°",
+      "option_b": "135°",
+      "option_c": "150°", 
+      "option_d": "180°",
+      "correct_option": "B",
+      "explanation": "Ta có công thức đổi: $\\alpha°$ = $\\frac{180° \\cdot \\alpha}{\\pi}$ (radian). Vậy $\\frac{3\\pi}{4}$ radian = $\\frac{180° \\cdot \\frac{3\\pi}{4}}{\\pi} = \\frac{180° \\cdot 3}{4} = 135°$."
+    }
+  ]
+}

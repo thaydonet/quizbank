@@ -1,0 +1,27 @@
+{
+  "title": "Toán 12 - Chương 1 - Bài 1 - Dạng 2: Tìm khoảng đơn điệu của hàm số",
+  "questions": [
+    {
+      "id": "mcq1-12-1-1-2",
+      "type": "mcq",
+      "question": "Tìm khoảng nghịch biến của hàm số $y = -x^4 + 2x^2 - 5$.",
+      "option_a": "$(-1; 0)$ và $(1; +∞)$",
+      "option_b": "$(-∞; -1)$ và $(0; 1)$",
+      "option_c": "(-1; 1)",
+      "option_d": "(-∞; +∞)",
+      "correct_option": "A",
+      "explanation": "Ta có $y' = -4x^3 + 4x = -4x(x^2 - 1)$. Xét $y' < 0 \\iff -4x(x-1)(x+1) < 0$. Lập bảng xét dấu, ta thấy $y' < 0$ khi $x \\in (-1; 0) \\cup (1; +∞)$. Vậy hàm số nghịch biến trên các khoảng $(-1; 0)$ và $(1; +∞)$."
+    },
+    {
+      "id": "mcq2-12-1-1-2",
+      "type": "mcq",
+      "question": "Khoảng nghịch biến của hàm số $y=-x^3+3x^2-4$ là:",
+      "option_a": "$(- \\infty; 0)$",
+      "option_b": "$(0; 2)$",
+      "option_c": "$(-1; 1)$",
+      "option_d": "$(0; +\\infty)$",
+      "correct_option": "A",
+      "explanation": "Để tìm khoảng nghịch biến của hàm số $y=-x^3+3x^2-4$, ta tính đạo hàm $y' = -3x^2+6x = -3x(x-2)$. Lập bảng xét dấu của $y'$, ta thấy $y' < 0$ trên các khoảng $(-\\infty;0)$ và $(2;+\\infty)$. Vậy, hàm số nghịch biến trên các khoảng $(-\\infty;0)$ và $(2;+\\infty)$."
+    }
+  ]
+}

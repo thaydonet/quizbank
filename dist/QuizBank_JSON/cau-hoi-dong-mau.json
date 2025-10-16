@@ -1,0 +1,45 @@
+{
+  "title": "Câu hỏi động - Mẫu thử nghiệm",
+  "questions": [
+    {
+      "id": "dynamic_sample_1",
+      "type": "mcq",
+      "question": "Cho hàm số $y = !a#-10#10#integer!x^2 + !b#-5#5#integer!x + !c#-3#3#integer!$. Tính giá trị của biểu thức {tinh: !a! + !b!} =",
+      "option_a": "{tinh: !a! + !b! + 1}",
+      "option_b": "{tinh: !a! + !b!}",
+      "option_c": "{tinh: !a! + !b! - 1}",
+      "option_d": "{tinh: !a! + !b! + 2}",
+      "correct_option": "B",
+      "explanation": "Ta có !a! + !b! = {tinh: !a! + !b!}. Đáp án đúng là B."
+    },
+    {
+      "id": "dynamic_sample_2",
+      "type": "sa",
+      "question": "Cho hai số !x#1#20#integer! và !y#1#15#integer!. Tính tích của chúng.",
+      "correct_option": "{tinh: !x! * !y!}",
+      "explanation": "Tích của !x! và !y! là !x! × !y! = {tinh: !x! * !y!}"
+    },
+    {
+      "id": "dynamic_sample_3",
+      "type": "mcq",
+      "question": "Phương trình $!a#1#5#integer!x + !b#-10#-1#integer! = 0$ có nghiệm là:",
+      "option_a": "x = {tinh: -(!b!) / (!a!)}",
+      "option_b": "x = {tinh: (!b!) / (!a!)}",
+      "option_c": "x = {tinh: (!a!) / (!b!)}",
+      "option_d": "x = {tinh: -(!a!) / (!b!)}",
+      "correct_option": "A",
+      "explanation": "Phương trình !a!x + (!b!) = 0 có nghiệm x = -(!b!)/(!a!) = {tinh: -(!b!) / (!a!)}"
+    },
+    {
+      "id": "dynamic_sample_4",
+      "type": "msq",
+      "question": "Cho hai số !p#1#10#integer! và !q#1#10#integer!. Xét các mệnh đề sau:",
+      "option_a": "!p! + !q! = {tinh: !p! + !q!}",
+      "option_b": "!p! × !q! = {tinh: !p! * !q!}",
+      "option_c": "!p! + !q! = {tinh: !p! + !q! + 1}",
+      "option_d": "!p! - !q! = {tinh: !p! - !q!}",
+      "correct_option": "a,b,d",
+      "explanation": "Các mệnh đề đúng: a) !p! + !q! = {tinh: !p! + !q!}, b) !p! × !q! = {tinh: !p! * !q!}, d) !p! - !q! = {tinh: !p! - !q!}"
+    }
+  ]
+}

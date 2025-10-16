@@ -1,0 +1,101 @@
+{
+  "title": "Mẫu câu hỏi Toán học",
+  "description": "File mẫu để import câu hỏi vào hệ thống",
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "Tìm đạo hàm của hàm số $f(x) = x^2 + 2x + 1$",
+      "option_a": "$f'(x) = 2x + 2$",
+      "option_b": "$f'(x) = x^2 + 2$",
+      "option_c": "$f'(x) = 2x + 1$",
+      "option_d": "$f'(x) = x + 2$",
+      "correct_option": "A",
+      "explanation": "Áp dụng quy tắc đạo hàm $(x^n)' = nx^{n-1}$ và $(c)' = 0$. Ta có $f'(x) = (x^2)' + (2x)' + (1)' = 2x + 2 + 0 = 2x + 2$.",
+      "difficulty_level": "easy",
+      "is_dynamic": false,
+      "tags": ["đạo hàm", "cơ bản", "đa thức"]
+    },
+    {
+      "type": "mcq",
+      "question": "Cho hàm số $f(x) = !a!x^2 + !b!x + !c!$. Tìm đạo hàm của hàm số.",
+      "option_a": "$f'(x) = {tinh: 2*!a!}x + !b!$",
+      "option_b": "$f'(x) = !a!x + !b!$",
+      "option_c": "$f'(x) = {tinh: 2*!a!}x + {tinh: 2*!b!}$",
+      "option_d": "$f'(x) = !a!x^2 + !b!$",
+      "correct_option": "A",
+      "explanation": "Áp dụng quy tắc đạo hàm: $(ax^2)' = 2ax$, $(bx)' = b$, $(c)' = 0$. Với $a = !a!$, $b = !b!$, ta có $f'(x) = {tinh: 2*!a!}x + !b!$.",
+      "difficulty_level": "medium",
+      "is_dynamic": true,
+      "dynamic_variables": {
+        "a": { "min": 1, "max": 5, "type": "integer" },
+        "b": { "min": -5, "max": 5, "type": "integer", "excludeZero": true },
+        "c": { "min": -10, "max": 10, "type": "integer" }
+      },
+      "tags": ["đạo hàm", "động", "tham số"]
+    },
+    {
+      "type": "msq",
+      "question": "Xét tính đúng sai của các mệnh đề sau về đạo hàm:",
+      "option_a": "$(x^3)' = 3x^2$",
+      "option_b": "$(\\sin x)' = \\cos x$",
+      "option_c": "$(e^x)' = e^x$",
+      "option_d": "$(\\ln x)' = x$",
+      "correct_option": "a,b,c",
+      "explanation": "a) Đúng: $(x^3)' = 3x^2$. b) Đúng: $(\\sin x)' = \\cos x$. c) Đúng: $(e^x)' = e^x$. d) Sai: $(\\ln x)' = \\frac{1}{x}$, không phải $x$.",
+      "difficulty_level": "medium",
+      "is_dynamic": false,
+      "tags": ["đạo hàm", "đúng sai", "hàm cơ bản"]
+    },
+    {
+      "type": "sa",
+      "question": "Tính giá trị của biểu thức $2^3 + 3^2 - 1^5$",
+      "correct_option": "16",
+      "explanation": "Ta có $2^3 = 8$, $3^2 = 9$, $1^5 = 1$. Vậy $2^3 + 3^2 - 1^5 = 8 + 9 - 1 = 16$.",
+      "difficulty_level": "easy",
+      "is_dynamic": false,
+      "tags": ["tính toán", "lũy thừa"]
+    },
+    {
+      "type": "sa",
+      "question": "Cho $a = !x!$ và $b = !y!$. Tính giá trị của $a^2 + b^2$",
+      "correct_option": "{tinh: !x!^2 + !y!^2}",
+      "explanation": "Với $a = !x!$ và $b = !y!$, ta có $a^2 + b^2 = (!x!)^2 + (!y!)^2 = {tinh: !x!^2} + {tinh: !y!^2} = {tinh: !x!^2 + !y!^2}$.",
+      "difficulty_level": "easy",
+      "is_dynamic": true,
+      "dynamic_variables": {
+        "x": { "min": 1, "max": 10, "type": "integer" },
+        "y": { "min": 1, "max": 10, "type": "integer" }
+      },
+      "tags": ["tính toán", "động", "bình phương"]
+    },
+    {
+      "type": "mcq",
+      "question": "Tìm giới hạn $\\lim_{x \\to 0} \\frac{\\sin x}{x}$",
+      "option_a": "$1$",
+      "option_b": "$0$",
+      "option_c": "$\\infty$",
+      "option_d": "Không tồn tại",
+      "correct_option": "A",
+      "explanation": "Đây là giới hạn cơ bản quan trọng: $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$. Có thể chứng minh bằng định lý kẹp hoặc quy tắc L'Hôpital.",
+      "difficulty_level": "medium",
+      "is_dynamic": false,
+      "tags": ["giới hạn", "hàm lượng giác", "cơ bản"]
+    },
+    {
+      "type": "mcq",
+      "question": "Cho hàm số $f(x) = iff(!k! > 0, '!k!x^2', '!k!x')$. Đạo hàm của $f(x)$ là:",
+      "option_a": "iff(!k! > 0, '{tinh: 2*!k!}x', '!k!')",
+      "option_b": "iff(!k! > 0, '!k!x', '{tinh: 2*!k!}x')",
+      "option_c": "$!k!$",
+      "option_d": "${tinh: 2*!k!}x$",
+      "correct_option": "A",
+      "explanation": "Nếu $k = !k! > 0$ thì $f(x) = !k!x^2$, suy ra $f'(x) = {tinh: 2*!k!}x$. Nếu $k \\leq 0$ thì $f(x) = !k!x$, suy ra $f'(x) = !k!$.",
+      "difficulty_level": "hard",
+      "is_dynamic": true,
+      "dynamic_variables": {
+        "k": { "choices": [-2, -1, 1, 2, 3] }
+      },
+      "tags": ["đạo hàm", "điều kiện", "nâng cao"]
+    }
+  ]
+}
