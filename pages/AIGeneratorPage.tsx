@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { generateQuizQuestions } from '../services/geminiService';
+import { ApiKeyManager } from '../services/apiKeyManager';
 import SparklesIcon from '../components/icons/SparklesIcon';
+import ApiKeySettings from '../components/ApiKeySettings';
 
 const AIGeneratorPage: React.FC = () => {
     const [prompt, setPrompt] = useState<string>('Tạo 10 câu hỏi về chủ đề "CHỦ ĐỀ TOÁN CỦA BẠN" cho lớp 12. Trong đó:\n- 6 câu dạng trắc nghiệm một lựa chọn (mcq) MỨC ĐỘ NHẬN BIẾT.\n- 2 câu dạng trắc nghiệm nhiều lựa chọn (msq) mức độ thông hiểu.\n- 2 câu dạng trả lời ngắn (sa) là toán thực tế mức độ Vận dụng. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
@@ -8,34 +10,60 @@ const AIGeneratorPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string>('ten-chu-de-bai-hoc.json');
+    const [showApiKeySettings, setShowApiKeySettings] = useState<boolean>(false);
+    const [apiKeyStatus, setApiKeyStatus] = useState(ApiKeyManager.getApiKeyStatus());
 
     const handleGenerate = async () => {
         if (!prompt) {
             setError('Vui lòng nhập yêu cầu để tạo câu hỏi.');
             return;
         }
-        if (!import.meta.env.VITE_API_KEY) {
-            setError('Lỗi cấu hình: API_KEY chưa được thiết lập. Không thể gọi AI.');
-            setGeneratedJson(JSON.stringify({ error: "API_KEY is not configured. Please set the environment variable." }, null, 2));
+
+        // Kiểm tra API key
+        const hasPersonalKey = ApiKeyManager.hasApiKey('gemini');
+        const hasFallbackKey = !!import.meta.env.VITE_API_KEY;
+        
+        if (!hasPersonalKey && !hasFallbackKey) {
+            setError('Chưa có API key. Vui lòng cấu hình API key Gemini để sử dụng tính năng AI.');
+            setGeneratedJson(JSON.stringify({ 
+                error: "Chưa có API key", 
+                details: "Vui lòng click 'Cài đặt API Key' để thêm Gemini API key cá nhân" 
+            }, null, 2));
             return;
         }
+
         setIsLoading(true);
         setError(null);
         setGeneratedJson('');
 
-        const result = await generateQuizQuestions(prompt);
-        setGeneratedJson(result);
-
         try {
-            const parsedResult = JSON.parse(result);
-            if (parsedResult.error) {
-                setError(parsedResult.details || parsedResult.error);
-            }
-        } catch (e) {
-            // This is not an error, just a check. The string is still valid.
-        }
+            const result = await generateQuizQuestions(prompt);
+            setGeneratedJson(result);
 
-        setIsLoading(false);
+            // Kiểm tra kết quả có lỗi không
+            try {
+                const parsedResult = JSON.parse(result);
+                if (parsedResult.error) {
+                    setError(parsedResult.details || parsedResult.error);
+                }
+            } catch (e) {
+                // Không phải lỗi, chỉ là kiểm tra
+            }
+        } catch (error) {
+            console.error('Error generating questions:', error);
+            setError('Có lỗi xảy ra khi tạo câu hỏi. Vui lòng thử lại.');
+            setGeneratedJson(JSON.stringify({ 
+                error: "Lỗi tạo câu hỏi", 
+                details: error instanceof Error ? error.message : 'Unknown error' 
+            }, null, 2));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleApiKeyUpdated = () => {
+        setApiKeyStatus(ApiKeyManager.getApiKeyStatus());
+        setError(null); // Clear any previous API key errors
     };
 
     const handleDownload = () => {
@@ -65,8 +93,39 @@ const AIGeneratorPage: React.FC = () => {
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50">
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">Trình tạo câu hỏi bằng AI</h1>
-                    <p className="text-lg text-gray-600 max-w-3xl mx-auto">Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.</p>
+                    <div className="flex items-center justify-center gap-4 mb-4">
+                        <h1 className="text-4xl font-bold text-gray-900">Trình tạo câu hỏi bằng AI</h1>
+                        <button
+                            onClick={() => setShowApiKeySettings(true)}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                        >
+                            ⚙️ Cài đặt API Key
+                        </button>
+                    </div>
+                    <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-4">
+                        Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.
+                    </p>
+                    
+                    {/* API Key Status */}
+                    <div className="flex justify-center">
+                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${
+                            apiKeyStatus.gemini.hasKey 
+                                ? 'bg-green-100 text-green-800 border border-green-200' 
+                                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                        }`}>
+                            {apiKeyStatus.gemini.hasKey ? (
+                                <>
+                                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                    API Key: Đã cấu hình (Gemini)
+                                </>
+                            ) : (
+                                <>
+                                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                    API Key: {import.meta.env.VITE_API_KEY ? 'Dùng mặc định' : 'Chưa cấu hình'}
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>
                 
                 {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert"><p className="font-bold">Đã xảy ra lỗi</p><p>{error}</p></div>}
@@ -138,6 +197,14 @@ const AIGeneratorPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* API Key Settings Modal */}
+                {showApiKeySettings && (
+                    <ApiKeySettings 
+                        onClose={() => setShowApiKeySettings(false)}
+                        onApiKeyUpdated={handleApiKeyUpdated}
+                    />
+                )}
             </div>
         </div>
     );

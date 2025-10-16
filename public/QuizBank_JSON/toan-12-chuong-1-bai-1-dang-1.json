@@ -1,7 +1,18 @@
 {
   "title": "Toán 12 - Chương 1 - Bài 1 - Dạng 1: Xét tính đơn điệu của hàm số",
   "questions": [
-    {
+ {
+  "id": "mcq1-12-1-1-2",
+      "type": "mcq",
+  "question": "Cho hàm số $y = !a#0!x^2 + !b:5:15!x + !c!$. Tính {tinh: !a! + !b!} =",
+  "option_a": "{tinh: !a! + !b! + 1}",
+  "option_b": "{tinh: !a! + !b!}",
+  "option_c": "{tinh: !a! + !b! - 1}",
+  "option_d": "{tinh: !a! + !b! + 2}",
+  "correct_option": "B",
+  "explanation": "Ta có !a! + !b! = {tinh: !a! + !b!}"
+},
+{
       "id": "mcq1-12-1-1-1",
       "type": "mcq",
       "question": "Trong các hàm số sau, hàm số nào đồng biến trên $\\mathbb{R}$?",
@@ -55,7 +66,14 @@
       "option_b": "Nếu $m=-1$, hàm số nghịch biến trên $\\mathbb{R}$.",
       "option_c": "Nếu $m>0$, hàm số có 2 cực trị.",
       "option_d": "Nếu $m=1$, hàm số nghịch biến trên khoảng $(-1;1)$. "
-    }
+    },
+    {
+      "id": "sa1-12-1-1-4",
+      "type": "sa",
+  "question": "Cho hai số !x:1:20! và !y:3:15!. Tính tích của chúng.",
+  "correct_option": "{tinh: !x! * !y!}",
+  "explanation": "Tích là !x! × !y! = {tinh: !x! * !y!}"
+}
  
   ]
 }

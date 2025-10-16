@@ -1,942 +1,792 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
+import DatabaseSidebar from '../components/DatabaseSidebar';
 import QuestionCard from '../components/QuestionCard';
-import type { QuizData, Question } from '../types';
+import QuizCreationModal from '../components/QuizCreationModal';
+import WordPressShortcodeModal from '../components/WordPressShortcodeModal';
+import type { Question } from '../types';
 import PrinterIcon from '../components/icons/PrinterIcon';
 import PlayCircleIcon from '../components/icons/PlayCircleIcon';
-import { QuizService } from '../services/quizService';
+
+import { QuizManagementService, type QuizMetadata, type LocalQuiz } from '../services/quizManagementService';
+
+import { QuestionBankService } from '../services/questionBankService';
+import { supabase } from '../services/supabaseClient';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
+import { QuizService } from '../services/quizService';
 
 const QuizBankPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  // Print dialog states
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printCount, setPrintCount] = useState(1);
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [shuffleMcqOptions, setShuffleMcqOptions] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'txt' | 'docx'>('txt');
-  const [quizData, setQuizData] = useState<QuizData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [exportFormat, setExportFormat] = useState<'docx'>('docx');
+
+  // Question management
+  const [activeQuestionTypeId, setActiveQuestionTypeId] = useState<string>('');
+  const [activeQuestionTypePath, setActiveQuestionTypePath] = useState<string>('');
+  const [databaseQuestions, setDatabaseQuestions] = useState<Question[]>([]);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeQuestionType, setActiveQuestionType] = useState<string>('toan-12-chuong-1-bai-1-dang-1');
 
-  // Global selections - lưu tất cả câu hỏi đã chọn từ mọi bài học 
-  // Format: "lessonPath:questionId" để tránh trùng ID giữa các bài
-  const [globalSelectedQuestions, setGlobalSelectedQuestions] = useState<string[]>([]);
+  // Store selections for each question type to persist when switching
+  const [questionTypeSelections, setQuestionTypeSelections] = useState<{ [questionTypeId: string]: string[] }>({});
 
-  // Lưu trữ tất cả câu hỏi đã load từ mọi bài học
-  const [allLoadedQuestions, setAllLoadedQuestions] = useState<{ [lessonPath: string]: { [id: string]: Question } }>({});
-
+  // UI states
   const [activeTab, setActiveTab] = useState<'all' | 'mcq' | 'msq' | 'sa'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navigate = useNavigate();
+  const [showQuizCreationModal, setShowQuizCreationModal] = useState(false);
+  const [showWordPressModal, setShowWordPressModal] = useState(false);
 
-  // Function để tạo unique key cho question (questionTypePath:questionId)
-  const createQuestionKey = useCallback((questionTypePath: string, questionId: string) => {
-    return `${questionTypePath}:${questionId}`;
-  }, []);
+  // Load questions from database when question type is selected
+  const fetchDatabaseQuestions = useCallback(async (questionTypeId: string, path: string) => {
+    // Save current selections before switching
+    if (activeQuestionTypeId && selectedQuestionIds.length > 0) {
+      setQuestionTypeSelections(prev => ({
+        ...prev,
+        [activeQuestionTypeId]: selectedQuestionIds
+      }));
+    }
 
-  // Function để parse question key thành questionTypePath và questionId
-  const parseQuestionKey = useCallback((key: string) => {
-    const [questionTypePath, questionId] = key.split(':');
-    return { questionTypePath, questionId };
-  }, []);
-
-  // Function để lấy tất cả questions đã load
-  const getAllLoadedQuestionsFlat = useCallback((): Question[] => {
-    const allQuestions: Question[] = [];
-    Object.values(allLoadedQuestions).forEach(questionTypeQuestions => {
-      Object.values(questionTypeQuestions).forEach(question => {
-        if (question) allQuestions.push(question);
-      });
-    });
-    return allQuestions;
-  }, [allLoadedQuestions]);
-
-
-
-  const fetchQuestionTypeData = useCallback(async (path: string) => {
     setIsLoading(true);
     setError(null);
-    setActiveQuestionType(path);
+    setActiveQuestionTypeId(questionTypeId);
+    setActiveQuestionTypePath(path);
 
     try {
-      const response = await fetch(`./QuizBank_JSON/${path}.json?t=${new Date().getTime()}`);
-      if (!response.ok) {
-        throw new Error(`Không tìm thấy file: ${path}.json. Vui lòng tạo file này hoặc kiểm tra lại đường dẫn.`);
-      }
-      const data: QuizData = await response.json();
-      setQuizData(data);
+      const dbQuestions = await QuestionBankService.getQuestionsByType(questionTypeId, { approvedOnly: true });
 
-      // Cập nhật allLoadedQuestions theo question type
-      setAllLoadedQuestions(prev => ({
-        ...prev,
-        [path]: data.questions.reduce((acc, q) => ({ ...acc, [q.id]: q }), {})
+      // Convert DatabaseQuestion to Question format
+      const convertedQuestions: Question[] = dbQuestions.map(dbQ => ({
+        id: dbQ.id,
+        type: dbQ.type,
+        question: dbQ.question_text,
+        option_a: dbQ.option_a || '',
+        option_b: dbQ.option_b || '',
+        option_c: dbQ.option_c || '',
+        option_d: dbQ.option_d || '',
+        correct_option: dbQ.correct_option,
+        explanation: dbQ.explanation,
+        difficulty: dbQ.difficulty_level,
+        tags: dbQ.tags || [],
+        isDynamic: dbQ.is_dynamic || false
       }));
 
+      setDatabaseQuestions(convertedQuestions);
+
+      // Restore previous selections for this question type
+      const previousSelections = questionTypeSelections[questionTypeId] || [];
+      setSelectedQuestionIds(previousSelections);
     } catch (err) {
       if (err instanceof Error) setError(err.message);
-      else setError('Đã xảy ra lỗi không xác định.');
-      setQuizData(null);
+      else setError('Đã xảy ra lỗi khi tải câu hỏi từ database.');
+      setDatabaseQuestions([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeQuestionTypeId, selectedQuestionIds, questionTypeSelections]);
 
-  // Load question type đầu tiên
-  useEffect(() => {
-    fetchQuestionTypeData(activeQuestionType);
-  }, []);
-
-  // Handler để select/deselect question - áp dụng cho global selection
-  const handleSelectQuestion = useCallback((id: string) => {
-    const questionKey = createQuestionKey(activeQuestionType, id);
-
-    setGlobalSelectedQuestions(prev => {
-      if (prev.includes(questionKey)) {
-        // Bỏ chọn
-        return prev.filter(key => key !== questionKey);
-      } else {
-        // Thêm vào chọn
-        return [...prev, questionKey];
-      }
-    });
-  }, [activeQuestionType, createQuestionKey]);
-
-  // Filter questions theo tab hiện tại (chỉ trong lesson hiện tại)
+  // Filter questions by tab
   const filteredQuestions = useMemo(() => {
-    if (!quizData) return [];
+    if (!databaseQuestions.length) return [];
     switch (activeTab) {
       case 'mcq':
-        return quizData.questions.filter(q => q.type === 'mcq');
+        return databaseQuestions.filter(q => q.type === 'mcq');
       case 'msq':
-        return quizData.questions.filter(q => q.type === 'msq');
+        return databaseQuestions.filter(q => q.type === 'msq');
       case 'sa':
-        return quizData.questions.filter(q => q.type === 'sa');
+        return databaseQuestions.filter(q => q.type === 'sa');
       case 'all':
       default:
-        return quizData.questions;
+        return databaseQuestions;
     }
-  }, [quizData, activeTab]);
+  }, [databaseQuestions, activeTab]);
 
-  // Đếm số câu hỏi theo loại trong lesson hiện tại
+  // Count questions by type
   const counts = useMemo(() => {
-    if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
+    if (!databaseQuestions.length) return { all: 0, mcq: 0, msq: 0, sa: 0 };
     return {
-      all: quizData.questions.length,
-      mcq: quizData.questions.filter(q => q.type === 'mcq').length,
-      msq: quizData.questions.filter(q => q.type === 'msq').length,
-      sa: quizData.questions.filter(q => q.type === 'sa').length
+      all: databaseQuestions.length,
+      mcq: databaseQuestions.filter(q => q.type === 'mcq').length,
+      msq: databaseQuestions.filter(q => q.type === 'msq').length,
+      sa: databaseQuestions.filter(q => q.type === 'sa').length
     };
-  }, [quizData]);
+  }, [databaseQuestions]);
 
-  // Đếm số câu đã chọn trong question type hiện tại theo loại
-  const selectedCountsInCurrentQuestionType = useMemo(() => {
-    if (!quizData) return { all: 0, mcq: 0, msq: 0, sa: 0 };
+  // Count selected questions by type (from all question types)
+  const selectedCounts = useMemo(async () => {
+    let mcqCount = 0, msqCount = 0, saCount = 0;
+    
+    // Count from current question type
+    const currentSelected = databaseQuestions.filter(q => selectedQuestionIds.includes(q.id));
+    mcqCount += currentSelected.filter(q => q.type === 'mcq').length;
+    msqCount += currentSelected.filter(q => q.type === 'msq').length;
+    saCount += currentSelected.filter(q => q.type === 'sa').length;
+    
+    // Count from other question types
+    for (const [questionTypeId, selections] of Object.entries(questionTypeSelections)) {
+      if (questionTypeId !== activeQuestionTypeId && selections.length > 0) {
+        try {
+          const dbQuestions = await QuestionBankService.getQuestionsByType(questionTypeId, { approvedOnly: true });
+          const selectedFromType = dbQuestions.filter(dbQ => selections.includes(dbQ.id));
+          mcqCount += selectedFromType.filter(q => q.type === 'mcq').length;
+          msqCount += selectedFromType.filter(q => q.type === 'msq').length;
+          saCount += selectedFromType.filter(q => q.type === 'sa').length;
+        } catch (error) {
+          console.error(`Error loading questions for type ${questionTypeId}:`, error);
+        }
+      }
+    }
+    
+    return {
+      all: mcqCount + msqCount + saCount,
+      mcq: mcqCount,
+      msq: msqCount,
+      sa: saCount
+    };
+  }, [databaseQuestions, selectedQuestionIds, questionTypeSelections, activeQuestionTypeId]);
 
-    // Lọc ra những key thuộc question type hiện tại
-    const currentQuestionTypeSelectedKeys = globalSelectedQuestions.filter(key => {
-      const { questionTypePath } = parseQuestionKey(key);
-      return questionTypePath === activeQuestionType;
+  // Use state for selectedCounts since it's async
+  const [globalSelectedCounts, setGlobalSelectedCounts] = useState({
+    all: 0, mcq: 0, msq: 0, sa: 0
+  });
+
+  // Update global selected counts when dependencies change
+  useEffect(() => {
+    const updateCounts = async () => {
+      const counts = await selectedCounts;
+      setGlobalSelectedCounts(counts);
+    };
+    updateCounts();
+  }, [selectedCounts]);
+
+  // Question selection handlers
+  const handleQuestionToggle = useCallback((questionId: string) => {
+    setSelectedQuestionIds(prev => {
+      if (prev.includes(questionId)) {
+        return prev.filter(id => id !== questionId);
+      } else {
+        return [...prev, questionId];
+      }
     });
+  }, []);
 
-    // Lấy questionIds từ keys
-    const currentQuestionTypeSelectedIds = currentQuestionTypeSelectedKeys.map(key => {
-      const { questionId } = parseQuestionKey(key);
-      return questionId;
-    });
-
-    const selectedQuestions = quizData.questions.filter(q =>
-      currentQuestionTypeSelectedIds.includes(q.id)
-    );
-
-    return {
-      all: selectedQuestions.length,
-      mcq: selectedQuestions.filter(q => q.type === 'mcq').length,
-      msq: selectedQuestions.filter(q => q.type === 'msq').length,
-      sa: selectedQuestions.filter(q => q.type === 'sa').length
-    };
-  }, [quizData, globalSelectedQuestions, activeQuestionType, parseQuestionKey]);
-
-  // Đếm tổng số câu đã chọn từ tất cả dạng bài theo loại
-  const globalSelectedCounts = useMemo(() => {
-    // Parse keys để lấy questions
-    const selectedQuestions = globalSelectedQuestions
-      .map(key => {
-        const { questionTypePath, questionId } = parseQuestionKey(key);
-        return allLoadedQuestions[questionTypePath]?.[questionId];
-      })
-      .filter((q): q is Question => q !== undefined);
-
-    return {
-      all: selectedQuestions.length,
-      mcq: selectedQuestions.filter(q => q.type === 'mcq').length,
-      msq: selectedQuestions.filter(q => q.type === 'msq').length,
-      sa: selectedQuestions.filter(q => q.type === 'sa').length
-    };
-  }, [globalSelectedQuestions, allLoadedQuestions, parseQuestionKey]);
-
-  // Handle select all cho question type hiện tại và tab hiện tại
   const handleSelectAll = useCallback(() => {
-    const filteredIds = filteredQuestions.map(q => q.id);
-    const filteredKeys = filteredIds.map(id => createQuestionKey(activeQuestionType, id));
-
-    const allFilteredSelected = filteredKeys.length > 0 &&
-      filteredKeys.every(key => globalSelectedQuestions.includes(key));
-
-    if (allFilteredSelected) {
-      // Bỏ chọn tất cả câu hỏi trong tab hiện tại
-      setGlobalSelectedQuestions(prev =>
-        prev.filter(key => !filteredKeys.includes(key))
-      );
-    } else {
-      // Chọn tất cả câu hỏi trong tab hiện tại
-      setGlobalSelectedQuestions(prev => {
-        const newSelections = [...prev];
-        filteredKeys.forEach(key => {
-          if (!newSelections.includes(key)) {
-            newSelections.push(key);
-          }
-        });
-        return newSelections;
+    const allQuestionIds = filteredQuestions.map(q => q.id);
+    setSelectedQuestionIds(prev => {
+      const newSelections = [...prev];
+      allQuestionIds.forEach(id => {
+        if (!newSelections.includes(id)) {
+          newSelections.push(id);
+        }
       });
-    }
-  }, [filteredQuestions, globalSelectedQuestions, activeQuestionType, createQuestionKey]);
+      return newSelections;
+    });
+  }, [filteredQuestions]);
 
+  const handleDeselectAll = useCallback(() => {
+    const filteredQuestionIds = filteredQuestions.map(q => q.id);
+    setSelectedQuestionIds(prev => prev.filter(id => !filteredQuestionIds.includes(id)));
+  }, [filteredQuestions]);
+
+
+
+  const getTotalSelectedCount = useCallback(() => {
+    // Count current selections plus all saved selections from other question types
+    const currentSelections = selectedQuestionIds.length;
+    const savedSelections = Object.values(questionTypeSelections).reduce((total, selections) => total + selections.length, 0);
+    return currentSelections + savedSelections;
+  }, [selectedQuestionIds.length, questionTypeSelections]);
+
+  // Get selected questions for export/quiz
+  const getSelectedQuestionsForQuiz = useCallback(async (): Promise<Question[]> => {
+    const allSelectedQuestions: Question[] = [];
+
+    // Add current question type selections
+    const currentSelections = databaseQuestions.filter(q => selectedQuestionIds.includes(q.id));
+    allSelectedQuestions.push(...currentSelections);
+
+    // Add selections from other question types
+    for (const [questionTypeId, selections] of Object.entries(questionTypeSelections)) {
+      if (questionTypeId !== activeQuestionTypeId && selections.length > 0) {
+        try {
+          const dbQuestions = await QuestionBankService.getQuestionsByType(questionTypeId, { approvedOnly: true });
+          const convertedQuestions: Question[] = dbQuestions
+            .filter(dbQ => selections.includes(dbQ.id))
+            .map(dbQ => ({
+              id: dbQ.id,
+              type: dbQ.type,
+              question: dbQ.question_text,
+              option_a: dbQ.option_a || '',
+              option_b: dbQ.option_b || '',
+              option_c: dbQ.option_c || '',
+              option_d: dbQ.option_d || '',
+              correct_option: dbQ.correct_option,
+              explanation: dbQ.explanation,
+              difficulty: dbQ.difficulty_level,
+              tags: dbQ.tags || [],
+              isDynamic: dbQ.is_dynamic || false
+            }));
+          allSelectedQuestions.push(...convertedQuestions);
+        } catch (error) {
+          console.error(`Error loading questions for type ${questionTypeId}:`, error);
+        }
+      }
+    }
+
+    return allSelectedQuestions;
+  }, [selectedQuestionIds, databaseQuestions, questionTypeSelections, activeQuestionTypeId]);
+
+  // Export handlers
   const handleOfflineExam = useCallback(() => {
-    if (globalSelectedQuestions.length === 0) return;
+    const totalSelected = getTotalSelectedCount();
+    if (totalSelected === 0) return;
     setShowPrintDialog(true);
-  }, [globalSelectedQuestions.length]);
+  }, [getTotalSelectedCount]);
 
-  // Trộn mảng
-  function shuffleArray<T>(array: T[]): T[] {
-    const arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
+  const handleOnlineExam = useCallback(() => {
+    const totalSelected = getTotalSelectedCount();
+    if (totalSelected === 0) return;
+    setShowQuizCreationModal(true);
+  }, [getTotalSelectedCount]);
+
+  // Shuffle array utility
+  function shuffleArray<T>(arr: T[]): T[] {
+    const newArr = [...arr];
+    for (let i = newArr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+      [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
     }
-    return arr;
+    return newArr;
   }
 
-  // Tạo file Word
-  const createWordDocument = useCallback((
-    questionsToPrint: Question[],
-    mcqQ: Question[],
-    msqQ: Question[],
-    saQ: Question[],
-    deNumber: number,
-    dateStr: string
-  ) => {
+  // Export to Word document (organized by sections)
+  const createWordDocument = async (questions: Question[], examNumber: number = 1): Promise<Document> => {
     try {
-      const paragraphs = [
-        // Header
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `ĐỀ THI TỔNG HỢP - Đề số ${deNumber}`,
-              bold: true,
-              size: 26, // 13pt * 2
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `Ngày tạo: ${dateStr}`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `Số câu: ${questionsToPrint.length}`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 100 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `  - Trắc nghiệm: ${mcqQ.length} câu`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 100 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `  - Đúng-Sai: ${msqQ.length} câu`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 100 }
-        }),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `  - Trả lời ngắn: ${saQ.length} câu`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400 }
-        }),
+      const children: Paragraph[] = [];
 
-        // Separator
+      // Header
+      children.push(
         new Paragraph({
           children: [
             new TextRun({
-              text: "----------------------------------------",
-              size: 26,
-              font: "Times New Roman"
-            })
+              text: `ĐỀ THI TRẮC NGHIỆM TOÁN ${examNumber > 1 ? `- Đề ${examNumber}` : ''}`,
+              bold: true,
+              size: 32,
+            }),
           ],
           alignment: AlignmentType.CENTER,
-          spacing: { after: 400 }
+          heading: HeadingLevel.HEADING_1,
         })
-      ];
+      );
 
-      // Phần I: Trắc nghiệm
-      if (mcqQ.length > 0) {
-        paragraphs.push(new Paragraph({
+      // Separate questions by type
+      const mcqQuestions = questions.filter(q => q.type === 'mcq');
+      const msqQuestions = questions.filter(q => q.type === 'msq');
+      const saQuestions = questions.filter(q => q.type === 'sa');
+
+      children.push(
+        new Paragraph({
           children: [
             new TextRun({
-              text: "PHẦN I: TRẮC NGHIỆM",
-              bold: true,
-              size: 26,
-              font: "Times New Roman"
-            })
+              text: `Tổng số câu: ${questions.length} (MCQ: ${mcqQuestions.length}, MSQ: ${msqQuestions.length}, SA: ${saQuestions.length})`,
+              size: 24,
+            }),
           ],
-          spacing: { before: 400, after: 400 }
-        }));
+          alignment: AlignmentType.CENTER,
+        })
+      );
 
-        mcqQ.forEach((q, idx) => {
-          // Câu hỏi
-          paragraphs.push(new Paragraph({
+      children.push(new Paragraph({ text: '' })); // Empty line
+
+      let questionCounter = 1;
+
+      // PHẦN I: TRẮC NGHIỆM (MCQ)
+      if (mcqQuestions.length > 0) {
+        children.push(
+          new Paragraph({
             children: [
               new TextRun({
-                text: `Câu ${idx + 1}: `,
+                text: 'PHẦN I: TRẮC NGHIỆM',
                 bold: true,
-                size: 26,
-                font: "Times New Roman"
+                size: 28,
               }),
-              new TextRun({
-                text: q.question,
-                size: 26,
-                font: "Times New Roman"
-              })
             ],
-            spacing: { after: 200 }
-          }));
+            alignment: AlignmentType.CENTER,
+          })
+        );
+        children.push(new Paragraph({ text: '' }));
 
-          // Các đáp án
-          ['A', 'B', 'C', 'D'].forEach((key) => {
-            const optionValue = q[`option_${key.toLowerCase()}` as keyof Question];
-            if (optionValue) {
-              paragraphs.push(new Paragraph({
-                children: [
-                  new TextRun({
-                    text: `${key}. `,
-                    bold: true,
-                    size: 26,
-                    font: "Times New Roman"
-                  }),
-                  new TextRun({
-                    text: optionValue as string,
-                    size: 26,
-                    font: "Times New Roman"
-                  })
-                ],
-                spacing: { after: 100 }
-              }));
-            }
-          });
-
-          paragraphs.push(new Paragraph({
-            children: [],
-            spacing: { after: 200 }
-          }));
-        });
-      }
-
-      // Phần II: Đúng - Sai
-      if (msqQ.length > 0) {
-        paragraphs.push(new Paragraph({
-          children: [
-            new TextRun({
-              text: "PHẦN II: ĐÚNG - SAI",
-              bold: true,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          spacing: { before: 400, after: 400 }
-        }));
-
-        msqQ.forEach((q, idx) => {
-          paragraphs.push(new Paragraph({
-            children: [
-              new TextRun({
-                text: `Câu ${mcqQ.length + idx + 1}: `,
-                bold: true,
-                size: 26,
-                font: "Times New Roman"
-              }),
-              new TextRun({
-                text: q.question,
-                size: 26,
-                font: "Times New Roman"
-              })
-            ],
-            spacing: { after: 200 }
-          }));
-
-          ['a', 'b', 'c', 'd'].forEach((key) => {
-            const optionValue = q[`option_${key}` as keyof Question];
-            paragraphs.push(new Paragraph({
+        mcqQuestions.forEach((question) => {
+          children.push(
+            new Paragraph({
               children: [
                 new TextRun({
-                  text: `  ${key}) ${optionValue || ''}`,
-                  size: 26,
-                  font: "Times New Roman"
-                })
+                  text: `Câu ${questionCounter}: ${question.question}`,
+                  bold: true,
+                  size: 24,
+                }),
               ],
-              spacing: { after: 100 }
-          }));
-          });
+            })
+          );
 
-          paragraphs.push(new Paragraph({
-            children: [],
-            spacing: { after: 200 }
-          }));
+          if (question.option_a) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `A. ${question.option_a}`, size: 22 })] }));
+          }
+          if (question.option_b) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `B. ${question.option_b}`, size: 22 })] }));
+          }
+          if (question.option_c) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `C. ${question.option_c}`, size: 22 })] }));
+          }
+          if (question.option_d) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `D. ${question.option_d}`, size: 22 })] }));
+          }
+
+          children.push(new Paragraph({ text: '' }));
+          questionCounter++;
         });
       }
 
-      // Phần III: Trả lời ngắn
-      if (saQ.length > 0) {
-        paragraphs.push(new Paragraph({
-          children: [
-            new TextRun({
-              text: "PHẦN III: TRẢ LỜI NGẮN",
-              bold: true,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          spacing: { before: 400, after: 400 }
-        }));
-
-        saQ.forEach((q, idx) => {
-          paragraphs.push(new Paragraph({
+      // PHẦN II: ĐÚNG - SAI (MSQ)
+      if (msqQuestions.length > 0) {
+        children.push(
+          new Paragraph({
             children: [
               new TextRun({
-                text: `Câu ${mcqQ.length + msqQ.length + idx + 1}: `,
+                text: 'PHẦN II: ĐÚNG - SAI',
                 bold: true,
-                size: 26,
-                font: "Times New Roman"
+                size: 28,
               }),
-              new TextRun({
-                text: q.question,
-                size: 26,
-                font: "Times New Roman"
-              })
             ],
-            spacing: { after: 200 }
-        }));
+            alignment: AlignmentType.CENTER,
+          })
+        );
+        children.push(new Paragraph({ text: '' }));
 
-          paragraphs.push(new Paragraph({
-            children: [
-              new TextRun({
-                text: "  Đáp án: ________________",
-                size: 26,
-                font: "Times New Roman"
-              })
-            ],
-            spacing: { after: 400 }
-          }));
+        msqQuestions.forEach((question) => {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Câu ${questionCounter}: ${question.question}`,
+                  bold: true,
+                  size: 24,
+                }),
+              ],
+            })
+          );
+
+          if (question.option_a) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `a) ${question.option_a}`, size: 22 })] }));
+          }
+          if (question.option_b) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `b) ${question.option_b}`, size: 22 })] }));
+          }
+          if (question.option_c) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `c) ${question.option_c}`, size: 22 })] }));
+          }
+          if (question.option_d) {
+            children.push(new Paragraph({ children: [new TextRun({ text: `d) ${question.option_d}`, size: 22 })] }));
+          }
+
+          children.push(new Paragraph({ text: '' }));
+          questionCounter++;
         });
       }
 
-      // Đáp án & lời giải
-      paragraphs.push(new Paragraph({
-        children: [
-          new TextRun({
-            text: "=== PHẦN ĐÁP ÁN & LỜI GIẢI ===",
-            bold: true,
-            size: 26,
-            font: "Times New Roman"
+      // PHẦN III: TRẢ LỜI NGẮN (SA)
+      if (saQuestions.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'PHẦN III: TRẢ LỜI NGẮN',
+                bold: true,
+                size: 28,
+              }),
+            ],
+            alignment: AlignmentType.CENTER,
           })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 800, after: 400 }
-      }));
+        );
+        children.push(new Paragraph({ text: '' }));
 
-      const allQuestions = [...mcqQ, ...msqQ, ...saQ];
-      allQuestions.forEach((q, i) => {
-        // Câu hỏi
-        paragraphs.push(new Paragraph({
+        saQuestions.forEach((question) => {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Câu ${questionCounter}: ${question.question}`,
+                  bold: true,
+                  size: 24,
+                }),
+              ],
+            })
+          );
+
+          children.push(new Paragraph({ text: '' }));
+          questionCounter++;
+        });
+      }
+
+      // Answer key
+      children.push(new Paragraph({ text: '' }));
+      children.push(
+        new Paragraph({
           children: [
             new TextRun({
-              text: `Câu ${i + 1}: `,
+              text: 'ĐÁP ÁN',
               bold: true,
-              size: 26,
-              font: "Times New Roman"
+              size: 28,
             }),
-          new TextRun({
-            text: q.question,
-            size: 26,
-            font: "Times New Roman"
+          ],
+          alignment: AlignmentType.CENTER,
+        })
+      );
+
+      questionCounter = 1;
+      
+      // MCQ answers - Use original answers (not shuffled)
+      if (mcqQuestions.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Phần I: Trắc nghiệm', bold: true, size: 24 })],
           })
+        );
+        mcqQuestions.forEach((question) => {
+          // Use original_correct_option if available (when answers were shuffled), otherwise use correct_option
+          const originalAnswer = (question as any).original_correct_option || question.correct_option;
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Câu ${questionCounter}: ${originalAnswer}`, size: 22 })],
+            })
+          );
+          questionCounter++;
+        });
+      }
+
+      // MSQ answers
+      if (msqQuestions.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Phần II: Đúng - sai', bold: true, size: 24 })],
+          })
+        );
+        msqQuestions.forEach((question) => {
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Câu ${questionCounter}: ${question.correct_option}`, size: 22 })],
+            })
+          );
+          questionCounter++;
+        });
+      }
+
+      // SA answers
+      if (saQuestions.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Phần III: Trả lời ngắn', bold: true, size: 24 })],
+          })
+        );
+        saQuestions.forEach((question) => {
+          children.push(
+            new Paragraph({
+              children: [new TextRun({ text: `Câu ${questionCounter}: ${question.correct_option}`, size: 22 })],
+            })
+          );
+          questionCounter++;
+        });
+      }
+
+      return new Document({
+        sections: [
+          {
+            properties: {},
+            children,
+          },
         ],
-        spacing: { after: 200 }
-      }));
-
-        // Hiển thị các đáp án cho câu trắc nghiệm và đúng-sai
-        if (q.type === 'mcq' || q.type === 'msq') {
-          ['A', 'B', 'C', 'D'].forEach((key) => {
-            const optionValue = q[`option_${key.toLowerCase()}` as keyof Question];
-            if (optionValue) {
-              paragraphs.push(new Paragraph({
-                children: [
-                  new TextRun({
-                    text: `${key}. `,
-                    bold: true,
-                    size: 26,
-                    font: "Times New Roman"
-                  }),
-                  new TextRun({
-                    text: optionValue as string,
-                    size: 26,
-                    font: "Times New Roman"
-                  })
-                ],
-                spacing: { after: 100 }
-              }));
-            }
-          });
-        }
-
-        // Lời giải
-        paragraphs.push(new Paragraph({
-          children: [
-            new TextRun({
-              text: "Lời giải",
-              bold: true,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          spacing: { after: 100 }
-        }));
-
-        paragraphs.push(new Paragraph({
-          children: [
-            new TextRun({
-              text: `Đáp án đúng: ${q.correct_option}`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          spacing: { after: 100 }
-        }));
-
-        paragraphs.push(new Paragraph({
-          children: [
-            new TextRun({
-              text: `Giải thích: ${q.explanation}`,
-              size: 26,
-              font: "Times New Roman"
-            })
-          ],
-          spacing: { after: 400 }
-        }));
       });
-
-      const doc = new Document({
-        sections: [{
-          properties: {},
-          children: paragraphs
-        }]
-      });
-
-      return doc;
     } catch (error) {
       console.error('Lỗi tạo document:', error);
       throw error;
     }
-  }, []);
+  };
 
-  // Sinh đề và in file - sử dụng global selections
-  const handlePrintConfirm = useCallback(() => {
-    // Parse keys để lấy questions
-    const questionsToPrint = globalSelectedQuestions
-      .map(key => {
-        const { questionTypePath, questionId } = parseQuestionKey(key);
-        return allLoadedQuestions[questionTypePath]?.[questionId];
-      })
-      .filter((q): q is Question => q !== undefined);
+  // Handle print confirmation
+  const handlePrintConfirm = useCallback(async () => {
+    const questionsToPrint = await getSelectedQuestionsForQuiz();
 
-    if (questionsToPrint.length === 0) return;
-
-    // Chia nhóm câu hỏi
-    let mcq = questionsToPrint.filter(q => q.type === 'mcq');
-    let msq = questionsToPrint.filter(q => q.type === 'msq');
-    let sa = questionsToPrint.filter(q => q.type === 'sa');
-
-    let now = new Date();
-    let dateStr = now.toLocaleString('vi-VN');
-
-    // Trộn câu hỏi từng loại nếu chọn
-    let mcqBase = shuffleQuestions ? shuffleArray(mcq) : mcq;
-    let msqBase = shuffleQuestions ? shuffleArray(msq) : msq;
-    let saBase = shuffleQuestions ? shuffleArray(sa) : sa;
-
-    for (let d = 1; d <= printCount; d++) {
-      // Tạo bản sao cho mỗi đề
-      let mcqQ = [...mcqBase];
-      let msqQ = [...msqBase];
-      let saQ = [...saBase];
-
-      if (exportFormat === 'docx') {
-        // Tạo file Word
-        try {
-          const doc = createWordDocument(questionsToPrint, mcqQ, msqQ, saQ, d, dateStr);
-          Packer.toBlob(doc)
-            .then((blob) => {
-              saveAs(blob, `de-thi-tong-hop-${d}.docx`);
-            })
-            .catch(error => {
-              console.error('Lỗi tạo file Word:', error);
-            });
-        } catch (error) {
-          console.error('Lỗi tạo document:', error);
-        }
-        continue;
-      }
-
-      // Tạo file TXT (code cũ)
-      let fileContent = `ĐỀ THI TỔNG HỢP - Đề số ${d}\n`;
-      fileContent += `Ngày tạo: ${dateStr}\n`;
-      fileContent += `Số câu: ${questionsToPrint.length}\n`;
-      fileContent += `  - Trắc nghiệm: ${mcqQ.length} câu\n`;
-      fileContent += `  - Đúng-Sai: ${msqQ.length} câu\n`;
-      fileContent += `  - Trả lời ngắn: ${saQ.length} câu\n`;
-      fileContent += `----------------------------------------\n\n`;
-
-      // Trộn đáp án cho MCQ và cập nhật correct_option
-      mcqQ = mcqQ.map(q => {
-        let options = [
-          { key: 'A', value: q.option_a },
-          { key: 'B', value: q.option_b },
-          { key: 'C', value: q.option_c },
-          { key: 'D', value: q.option_d }
-        ].filter(opt => opt.value);
-
-        let correctKey = q.correct_option.trim();
-        let correctValue = '';
-
-        // Tìm giá trị đáp án đúng ban đầu
-        if (['A', 'B', 'C', 'D'].includes(correctKey)) {
-          correctValue = q[`option_${correctKey.toLowerCase()}` as keyof Question] as string;
-        } else {
-          correctValue = correctKey;
-        }
-
-        let shuffledOptions = shuffleMcqOptions ? shuffleArray(options) : options;
-
-        // Tìm vị trí mới của đáp án đúng
-        let newCorrectIndex = shuffledOptions.findIndex(opt => opt.value === correctValue);
-        let newCorrectOption = newCorrectIndex >= 0 ? String.fromCharCode(65 + newCorrectIndex) : correctKey;
-
-        // Gán lại đáp án đúng
-        return {
-          ...q,
-          option_a: shuffledOptions[0]?.value || '',
-          option_b: shuffledOptions[1]?.value || '',
-          option_c: shuffledOptions[2]?.value || '',
-          option_d: shuffledOptions[3]?.value || '',
-          correct_option: newCorrectOption
-        };
-      });
-
-      // Phần I: Trắc nghiệm
-      if (mcqQ.length > 0) {
-        fileContent += "PHẦN I: TRẮC NGHIỆM\n\n";
-        mcqQ.forEach((q, idx) => {
-          fileContent += `Câu ${idx + 1}: ${q.question}\n`;
-          ['A', 'B', 'C', 'D'].forEach((key) => {
-            if (q[`option_${key.toLowerCase()}` as keyof Question]) {
-              fileContent += `  ${key}. ${q[`option_${key.toLowerCase()}` as keyof Question]}\n`;
-            }
-          });
-          fileContent += `\n`;
-        });
-      }
-
-      // Phần II: Đúng - Sai
-      if (msqQ.length > 0) {
-        fileContent += "PHẦN II: ĐÚNG - SAI\n\n";
-        msqQ.forEach((q, idx) => {
-          fileContent += `Câu ${mcqQ.length + idx + 1}: ${q.question}\n`;
-          fileContent += `  a) ${q.option_a || ''}\n`;
-          fileContent += `  b) ${q.option_b || ''}\n`;
-          fileContent += `  c) ${q.option_c || ''}\n`;
-          fileContent += `  d) ${q.option_d || ''}\n\n`;
-        });
-      }
-
-      // Phần III: Trả lời ngắn
-      if (saQ.length > 0) {
-        fileContent += "PHẦN III: TRẢ LỜI NGẮN\n\n";
-        saQ.forEach((q, idx) => {
-          fileContent += `Câu ${mcqQ.length + msqQ.length + idx + 1}: ${q.question}\n`;
-          fileContent += `  Đáp án: ________________\n\n`;
-        });
-      }
-
-      // Đáp án & lời giải
-      fileContent += "\n\n=== PHẦN ĐÁP ÁN & LỜI GIẢI ===\n\n";
-      let allQuestions = [...mcqQ, ...msqQ, ...saQ];
-      allQuestions.forEach((q, i) => {
-        fileContent += `Câu ${i + 1}: ${q.question}\n`;
-
-        // Hiển thị các đáp án cho câu trắc nghiệm và đúng-sai
-        if (q.type === 'mcq' || q.type === 'msq') {
-          ['A', 'B', 'C', 'D'].forEach((key) => {
-            const optionValue = q[`option_${key.toLowerCase()}` as keyof Question];
-            if (optionValue) {
-              fileContent += `${key}. ${optionValue}\n`;
-            }
-          });
-        }
-
-        fileContent += `Lời giải\n`;
-        fileContent += `Đáp án đúng: ${q.correct_option}\n`;
-        fileContent += `Giải thích: ${q.explanation}\n\n`;
-      });
-
-      const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `de-thi-tong-hop-${d}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    if (questionsToPrint.length === 0) {
+      alert('Vui lòng chọn ít nhất một câu hỏi để tạo đề thi');
+      return;
     }
-    setShowPrintDialog(false);
-  }, [globalSelectedQuestions, getAllLoadedQuestionsFlat, allLoadedQuestions, parseQuestionKey, printCount, shuffleQuestions, shuffleMcqOptions, exportFormat, createWordDocument]);
 
-  // Thi online - sử dụng global selections
-  const handleOnlineExam = useCallback(() => {
-    if (globalSelectedQuestions.length === 0) return;
+    try {
+      for (let i = 1; i <= printCount; i++) {
+        let questionsForThisExam = [...questionsToPrint];
 
-    // Parse keys để lấy questions
-    const questionsForExam = globalSelectedQuestions
-      .map(key => {
-        const { questionTypePath, questionId } = parseQuestionKey(key);
-        return allLoadedQuestions[questionTypePath]?.[questionId];
-      })
-      .filter((q): q is Question => q !== undefined);
+        // Shuffle questions if requested
+        if (shuffleQuestions) {
+          questionsForThisExam = shuffleArray(questionsForThisExam);
+        }
 
+        // Shuffle MCQ options if requested
+        if (shuffleMcqOptions) {
+          questionsForThisExam = questionsForThisExam.map(q => {
+            if (q.type === 'mcq') {
+              // Gather non-empty options and shuffle generically
+              const options = [
+                q.option_a ? { key: 'A', value: q.option_a } : null,
+                q.option_b ? { key: 'B', value: q.option_b } : null,
+                q.option_c ? { key: 'C', value: q.option_c } : null,
+                q.option_d ? { key: 'D', value: q.option_d } : null,
+              ].filter(Boolean) as { key: string; value: string }[];
+
+              if (options.length === 0) return q;
+
+              const correctOption = options.find(opt => opt.key === q.correct_option);
+              const shuffledOptions = shuffleArray(options);
+              const newCorrectKey =
+                shuffledOptions.find(opt => opt.value === correctOption?.value)?.key
+                || shuffledOptions[0].key;
+
+              return {
+                ...q,
+                option_a: shuffledOptions[0]?.value || '',
+                option_b: shuffledOptions[1]?.value || '',
+                option_c: shuffledOptions[2]?.value || '',
+                option_d: shuffledOptions[3]?.value || '',
+                correct_option: newCorrectKey,
+                original_correct_option: q.correct_option // Save original answer for answer key
+              };
+            }
+            return q;
+          });
+        }
+
+        // Export to Word
+        const doc = await createWordDocument(questionsForThisExam, printCount > 1 ? i : 1);
+        const blob = await Packer.toBlob(doc);
+        const fileName = printCount > 1 ? `de-thi-toan-${i}.docx` : 'de-thi-toan.docx';
+        saveAs(blob, fileName);
+      }
+
+      setShowPrintDialog(false);
+    } catch (error) {
+      console.error('Lỗi khi tạo file:', error);
+      alert('Có lỗi xảy ra khi tạo file. Vui lòng thử lại.');
+    }
+  }, [getSelectedQuestionsForQuiz, printCount, shuffleQuestions, shuffleMcqOptions]);
+
+  // Handle quiz creation
+  const handleQuizCreation = useCallback(async (title: string, maxAttempts: number) => {
+    const totalSelected = getTotalSelectedCount();
+    if (totalSelected === 0) return;
+
+    const questionsForExam = await getSelectedQuestionsForQuiz();
     if (questionsForExam.length === 0) return;
 
-    // Tạo title dựa trên số câu hỏi và thời gian
-    const now = new Date();
-    const timeStr = now.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    const title = `Đề thi tổng hợp - ${questionsForExam.length} câu - ${timeStr}`;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
 
-    // Lưu quiz vào localStorage
-    const savedQuiz = QuizService.saveQuiz(title, questionsForExam);
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
 
-    // Chia nhóm câu hỏi
-    let mcq = questionsForExam.filter(q => q.type === 'mcq');
-    let msq = questionsForExam.filter(q => q.type === 'msq');
-    let sa = questionsForExam.filter(q => q.type === 'sa');
+      // Save to Supabase
+      const result = await QuizManagementService.saveQuiz({
+        title,
+        questions: questionsForExam,
+        max_attempts: maxAttempts,
+        created_by: user.id
+      });
 
-    // Trộn câu hỏi từng loại nếu chọn
-    let mcqQ = shuffleQuestions ? shuffleArray(mcq) : mcq;
-    let msqQ = shuffleQuestions ? shuffleArray(msq) : msq;
-    let saQ = shuffleQuestions ? shuffleArray(sa) : sa;
+      const savedQuiz = result.success ? result.data : null;
 
-    const shuffledQuestions = [...mcqQ, ...msqQ, ...saQ];
+      if (savedQuiz) {
+        navigate(`/exam/${savedQuiz.slug}`);
+        return;
+      }
 
-    navigate('/exam', { state: { questions: shuffledQuestions, title: savedQuiz.title, quizId: savedQuiz.id } });
-  }, [globalSelectedQuestions, allLoadedQuestions, parseQuestionKey, shuffleQuestions, navigate]);
+      // Fallback to local storage
+      const savedQuiz2 = QuizService.saveQuiz(title, questionsForExam);
+      navigate(`/online-exam?quizId=${savedQuiz2.id}&title=${encodeURIComponent(savedQuiz2.title)}&maxAttempts=${maxAttempts}`);
+    } catch (error) {
+      console.error('Error creating quiz:', error);
+      alert('Có lỗi xảy ra khi tạo quiz. Vui lòng thử lại.');
+    }
+  }, [getTotalSelectedCount, getSelectedQuestionsForQuiz, navigate]);
 
-  // Function để clear tất cả selections
-  const handleClearAllSelections = useCallback(() => {
-    setGlobalSelectedQuestions([]);
-  }, []);
+  // Generate WordPress shortcodes for selected questions (organized by sections)
+  const generateWordPressShortcodes = useCallback(async () => {
+    const selectedQuestions = await getSelectedQuestionsForQuiz();
+    
+    if (selectedQuestions.length === 0) {
+      alert('Vui lòng chọn ít nhất một câu hỏi để tạo shortcode.');
+      return '';
+    }
 
+    const cleanText = (text: string) => text.replace(/"/g, '&quot;').replace(/\[/g, '&#91;').replace(/\]/g, '&#93;');
+    
+    // Separate questions by type
+    const mcqQuestions = selectedQuestions.filter(q => q.type === 'mcq');
+    const msqQuestions = selectedQuestions.filter(q => q.type === 'msq');
+    const saQuestions = selectedQuestions.filter(q => q.type === 'sa');
+    
+    const sections = [];
+    
+    // Phần I: Trắc nghiệm (MCQ)
+    if (mcqQuestions.length > 0) {
+      sections.push('PHẦN I: TRẮC NGHIỆM\n');
+      mcqQuestions.forEach((question, index) => {
+        sections.push(`[quiz_question question="Câu ${index + 1}: ${cleanText(question.question)}" option_a="${cleanText(question.option_a)}" option_b="${cleanText(question.option_b)}" option_c="${cleanText(question.option_c)}" option_d="${cleanText(question.option_d)}" correct="${question.correct_option}" explanation="${cleanText(question.explanation)}"]`);
+      });
+      sections.push(''); // Empty line after section
+    }
+    
+    // Phần II: Đúng - sai (MSQ)
+    if (msqQuestions.length > 0) {
+      sections.push('PHẦN II: ĐÚNG - SAI\n');
+      msqQuestions.forEach((question, index) => {
+        sections.push(`[quiz_question_T_F question="Câu ${index + 1}: ${cleanText(question.question)}" option_a="${cleanText(question.option_a)}" option_b="${cleanText(question.option_b)}" option_c="${cleanText(question.option_c)}" option_d="${cleanText(question.option_d)}" correct="${question.correct_option}" explanation="${cleanText(question.explanation)}"]`);
+      });
+      sections.push(''); // Empty line after section
+    }
+    
+    // Phần III: Trả lời ngắn (SA)
+    if (saQuestions.length > 0) {
+      sections.push('PHẦN III: TRẢ LỜI NGẮN\n');
+      saQuestions.forEach((question, index) => {
+        sections.push(`[quiz_question_TLN question="Câu ${index + 1}: ${cleanText(question.question)}" correct="${question.correct_option}" explanation="${cleanText(question.explanation)}"]`);
+      });
+    }
+
+    return sections.join('\n');
+  }, [getSelectedQuestionsForQuiz]);
+
+  // Render main content
   const renderContent = () => {
-    if (isLoading) return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div></div>;
-    if (error) return <div className="text-center text-red-600 bg-red-100 p-4 rounded-lg border border-red-200">{error}</div>;
-    if (!quizData || quizData.questions.length === 0) return <div className="text-center text-gray-500 py-16">Không có câu hỏi nào cho bài học này.</div>;
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      );
+    }
 
-    const filteredIds = filteredQuestions.map(q => q.id);
-    const filteredKeys = filteredIds.map(id => createQuestionKey(activeQuestionType, id));
-    const allInViewSelected = filteredKeys.length > 0 &&
-      filteredKeys.every(key => globalSelectedQuestions.includes(key));
+    if (error) {
+      return (
+        <div className="text-center text-red-600 bg-red-100 p-4 rounded-lg border border-red-200">
+          {error}
+        </div>
+      );
+    }
 
-    const renderTabs = () => (
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-          <button onClick={() => setActiveTab('all')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Tất cả
-            <span className="bg-gray-200 text-gray-700 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.all}</span>
-            {selectedCountsInCurrentQuestionType.all > 0 && (
-              <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
-                {selectedCountsInCurrentQuestionType.all}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setActiveTab('mcq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'mcq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Trắc nghiệm
-            <span className="bg-blue-100 text-blue-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.mcq}</span>
-            {selectedCountsInCurrentQuestionType.mcq > 0 && (
-              <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
-                {selectedCountsInCurrentQuestionType.mcq}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setActiveTab('msq')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'msq' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Đúng - Sai
-            <span className="bg-purple-100 text-purple-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.msq}</span>
-            {selectedCountsInCurrentQuestionType.msq > 0 && (
-              <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
-                {selectedCountsInCurrentQuestionType.msq}
-              </span>
-            )}
-          </button>
-          <button onClick={() => setActiveTab('sa')} className={`whitespace-nowrap pb-4 px-1 border-b-2 font-semibold text-sm transition-colors ${activeTab === 'sa' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-            Trả lời ngắn
-            <span className="bg-amber-100 text-amber-800 ml-2 px-2.5 py-1 rounded-full text-xs font-bold">{counts.sa}</span>
-            {selectedCountsInCurrentQuestionType.sa > 0 && (
-              <span className="bg-indigo-500 text-white ml-1 px-2 py-1 rounded-full text-xs font-bold">
-                {selectedCountsInCurrentQuestionType.sa}
-              </span>
-            )}
-          </button>
-        </nav>
-      </div>
-    );
+    if (!activeQuestionTypeId) {
+      return (
+        <div className="text-center text-gray-500 py-16">
+          <div className="text-6xl mb-4">📚</div>
+          <h3 className="text-xl font-semibold mb-2">Chọn dạng câu hỏi</h3>
+          <p>Hãy chọn một dạng câu hỏi từ menu bên trái để bắt đầu.</p>
+        </div>
+      );
+    }
+
+    if (databaseQuestions.length === 0) {
+      return (
+        <div className="text-center text-gray-500 py-16">
+          <div className="text-6xl mb-4">📝</div>
+          <h3 className="text-xl font-semibold mb-2">Chưa có câu hỏi</h3>
+          <p>Dạng câu hỏi này chưa có câu hỏi nào.</p>
+          <p className="text-sm mt-2">Hãy thêm câu hỏi trong Admin Panel.</p>
+        </div>
+      );
+    }
 
     return (
       <div>
-        {/* Title - full width */}
+        {/* Title */}
         <div className="mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4" title={quizData.title}>
-            {quizData.title}
-          </h2>
-        </div>
-
-        {/* Hiển thị tổng số câu đã chọn từ tất cả dạng bài */}
-        {globalSelectedQuestions.length > 0 && (
-          <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="text-sm text-indigo-800">
-                <div className="font-bold mb-1">Tổng số câu: {globalSelectedQuestions.length}</div>
-                <div className="text-xs text-indigo-600">
-                  {globalSelectedCounts.mcq > 0 && <span>{globalSelectedCounts.mcq} câu Trắc nghiệm</span>}
-                  {globalSelectedCounts.mcq > 0 && (globalSelectedCounts.msq > 0 || globalSelectedCounts.sa > 0) && <span>; </span>}
-                  {globalSelectedCounts.msq > 0 && <span>{globalSelectedCounts.msq} câu Đúng - Sai</span>}
-                  {globalSelectedCounts.msq > 0 && globalSelectedCounts.sa > 0 && <span>; </span>}
-                  {globalSelectedCounts.sa > 0 && <span>{globalSelectedCounts.sa} câu Trả lời ngắn</span>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Action buttons */}
-                <button
-                  onClick={handleOfflineExam}
-                  disabled={globalSelectedQuestions.length === 0}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  <PrinterIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Tải đề</span>
-                  <span className="sm:hidden">Tải</span>
-                  <span className="ml-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px] font-bold">
-                    {globalSelectedQuestions.length}
-                  </span>
-                </button>
-                <button
-                  onClick={handleOnlineExam}
-                  disabled={globalSelectedQuestions.length === 0}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm"
-                >
-                  <PlayCircleIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Thi Online</span>
-                  <span className="sm:hidden">Thi</span>
-                  <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded text-[10px] font-bold">
-                    {globalSelectedQuestions.length}
-                  </span>
-                </button>
-                <button
-                  onClick={handleClearAllSelections}
-                  className="px-3 py-1 text-xs font-medium text-red-700 bg-red-100 rounded-md hover:bg-red-200 transition-colors"
-                >
-                  Xóa tất cả
-                </button>
-              </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            {activeQuestionTypePath || 'Chọn dạng toán từ menu bên trái'}
+          </h1>
+          
+          {/* Selection Statistics */}
+          {getTotalSelectedCount() > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-blue-800 font-medium">
+                Bạn đã chọn được{' '}
+                <span className="font-bold">{globalSelectedCounts.mcq} câu trắc nghiệm</span>;{' '}
+                <span className="font-bold">{globalSelectedCounts.msq} câu đúng sai</span>;{' '}
+                <span className="font-bold">{globalSelectedCounts.sa} câu TLN</span>
+              </p>
             </div>
+          )}
+        </div>
+
+        {/* Question type tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'Tất cả', count: counts.all, selectedCount: globalSelectedCounts.all },
+              { key: 'mcq', label: 'Trắc nghiệm', count: counts.mcq, selectedCount: globalSelectedCounts.mcq },
+              { key: 'msq', label: 'Đúng/Sai', count: counts.msq, selectedCount: globalSelectedCounts.msq },
+              { key: 'sa', label: 'Trả lời ngắn', count: counts.sa, selectedCount: globalSelectedCounts.sa }
+            ].map(({ key, label, count, selectedCount }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key as typeof activeTab)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+              >
+                {label} ({selectedCount}/{count})
+              </button>
+            ))}
           </div>
-        )}
 
-        {renderTabs()}
-
-        <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="select-all"
-              type="checkbox"
-              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-              checked={allInViewSelected}
-              onChange={handleSelectAll}
-              disabled={filteredQuestions.length === 0}
-            />
-            <label htmlFor="select-all" className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
-              {allInViewSelected ? 'Bỏ chọn tất cả trong dạng này' : `Chọn tất cả ${filteredQuestions.length} câu trong dạng này`}
-            </label>
+          {/* Select All / Deselect All buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSelectAll}
+              disabled={filteredQuestions.length === 0 || filteredQuestions.every(q => selectedQuestionIds.includes(q.id))}
+              className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ✓ Chọn tất cả
+            </button>
+            <button
+              onClick={handleDeselectAll}
+              disabled={selectedQuestionIds.length === 0}
+              className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              ✗ Bỏ chọn tất cả
+            </button>
           </div>
         </div>
 
-        <div className="space-y-4">
-          {filteredQuestions.map((q) => {
-            const questionKey = createQuestionKey(activeQuestionType, q.id);
+        {/* Questions grid */}
+        <div className="grid gap-6">
+          {filteredQuestions.map((question, index) => {
+            console.debug('Rendering filteredQuestions map', { index, id: question.id });
             return (
               <QuestionCard
-                key={q.id}
-                question={q}
-                index={quizData.questions.findIndex(origQ => origQ.id === q.id)}
-                isSelected={globalSelectedQuestions.includes(questionKey)}
-                onSelect={handleSelectQuestion}
+                key={question.id}
+                question={question}
+                index={index}
+                onSelect={handleQuestionToggle}
+                isSelected={selectedQuestionIds.includes(question.id)}
               />
             );
           })}
-          {filteredQuestions.length === 0 && <p className="text-center text-gray-500 py-12">Không có câu hỏi loại này.</p>}
         </div>
       </div>
     );
@@ -944,97 +794,187 @@ const QuizBankPage: React.FC = () => {
 
   return (
     <div className="flex h-full bg-gray-50 relative">
-      {/* Popup in đề */}
-      {showPrintDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-            <h2 className="text-lg font-bold mb-4">Tùy chọn in đề</h2>
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-700 font-medium">
-                Tổng số câu hỏi: <span className="font-bold text-indigo-600">{globalSelectedQuestions.length}</span>
-              </p>
-            </div>
-            <div className="mb-3">
-              <label className="block font-medium mb-1">Số đề cần in:</label>
-              <input type="number" min={1} max={20} value={printCount} onChange={e => setPrintCount(Number(e.target.value))} className="w-full border rounded px-2 py-1" />
-            </div>
-            <div className="mb-3 flex items-center gap-2">
-              <input type="checkbox" id="shuffleQuestions" checked={shuffleQuestions} onChange={e => setShuffleQuestions(e.target.checked)} />
-              <label htmlFor="shuffleQuestions">Trộn câu hỏi (chỉ trộn trong từng loại)</label>
-            </div>
-            <div className="mb-3 flex items-center gap-2">
-              <input type="checkbox" id="shuffleMcqOptions" checked={shuffleMcqOptions} onChange={e => setShuffleMcqOptions(e.target.checked)} />
-              <label htmlFor="shuffleMcqOptions">Trộn đáp án phần I (Trắc nghiệm)</label>
-            </div>
-            <div className="mb-4">
-              <label className="block font-medium mb-2">Định dạng file:</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    value="txt"
-                    checked={exportFormat === 'txt'}
-                    onChange={e => setExportFormat(e.target.value as 'txt' | 'docx')}
-                  />
-                  <span>File .txt</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="exportFormat"
-                    value="docx"
-                    checked={exportFormat === 'docx'}
-                    onChange={e => setExportFormat(e.target.value as 'txt' | 'docx')}
-                  />
-                  <span>File Word (.docx)</span>
-                </label>
-              </div>
-              {exportFormat === 'docx' && (
-                <p className="text-xs text-gray-600 mt-1">
-                  Định dạng: A4, Times New Roman, size 13pt
+      {/* Desktop fixed sidebar - left column (does not overlap popups which use z-50+) */}
+      <div className="hidden md:block md:fixed md:inset-y-0 md:left-0 md:w-[300px] md:z-10 bg-white border-r border-gray-200">
+        <DatabaseSidebar
+          onSelectQuestionType={fetchDatabaseQuestions}
+          activeQuestionTypePath={activeQuestionTypePath}
+        />
+      </div>
+      {/* Main area with left padding to account for fixed sidebar on md+ */}
+      <div className="flex-1 md:pl-[300px]">
+        {/* Print Dialog */}
+        {showPrintDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+              <h2 className="text-lg font-bold mb-4">Tùy chọn in đề</h2>
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700 font-medium">
+                  Tổng số câu hỏi: <span className="font-bold text-indigo-600">{getTotalSelectedCount()}</span>
                 </p>
-              )}
+                <p className="text-xs text-gray-600 mt-1">Nguồn: Ngân hàng Toán Thầy Đồ</p>
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium mb-1">Số đề cần in:</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={printCount}
+                  onChange={e => setPrintCount(Number(e.target.value))}
+                  className="w-full border rounded px-2 py-1"
+                />
+              </div>
+              <div className="mb-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="shuffleQuestions"
+                  checked={shuffleQuestions}
+                  onChange={e => setShuffleQuestions(e.target.checked)}
+                />
+                <label htmlFor="shuffleQuestions">Trộn câu hỏi</label>
+              </div>
+              <div className="mb-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="shuffleMcqOptions"
+                  checked={shuffleMcqOptions}
+                  onChange={e => setShuffleMcqOptions(e.target.checked)}
+                />
+                <label htmlFor="shuffleMcqOptions">Trộn đáp án trắc nghiệm</label>
+              </div>
+              <div className="mb-4">
+                <label className="block font-medium mb-2">Định dạng file:</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="exportFormat"
+                      value="docx"
+                      checked={exportFormat === 'docx'}
+                      onChange={e => setExportFormat(e.target.value as 'docx')}
+                    />
+                    <span>File .docx</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrintConfirm}
+                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+                >
+                  Tải {exportFormat.toUpperCase()}
+                </button>
+                <button
+                  onClick={() => setShowPrintDialog(false)}
+                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+              </div>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 font-semibold" onClick={() => setShowPrintDialog(false)}>Hủy</button>
-              <button className="px-4 py-2 rounded bg-indigo-600 text-white font-semibold hover:bg-indigo-700" onClick={handlePrintConfirm}>
-                {exportFormat === 'docx' ? 'Tải Word' : 'Tải TXT'}
+          </div>
+        )}
+
+        {/* Quiz Creation Modal */}
+        {showQuizCreationModal && (
+          <QuizCreationModal
+            isOpen={showQuizCreationModal}
+            onClose={() => setShowQuizCreationModal(false)}
+            onConfirm={handleQuizCreation}
+            questionCount={getTotalSelectedCount()}
+          />
+        )}
+
+        {/* WordPress Shortcode Modal */}
+        {showWordPressModal && (
+          <WordPressShortcodeModal
+            onClose={() => setShowWordPressModal(false)}
+            generateShortcodes={generateWordPressShortcodes}
+          />
+        )}
+
+        {/* Sidebar moved below main (rendered after main for stacking) */}
+
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex md:hidden">
+            <div className="w-[300px] bg-white border-r border-gray-200 p-0 h-full overflow-y-auto relative pt-4">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl font-bold z-10"
+                aria-label="Đóng menu"
+              >
+                ×
+              </button>
+              <DatabaseSidebar
+                onSelectQuestionType={(questionTypeId, path) => {
+                  fetchDatabaseQuestions(questionTypeId, path);
+                  setSidebarOpen(false);
+                }}
+                activeQuestionTypePath={activeQuestionTypePath}
+              />
+            </div>
+            <div className="flex-1" onClick={() => setSidebarOpen(false)}></div>
+          </div>
+        )}
+
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="md:hidden fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-full p-2 shadow-lg hover:bg-indigo-50"
+          aria-label="Mở menu"
+        >
+          ☰
+        </button>
+
+        {/* Main content */}
+        <main className="flex-1 p-4 sm:p-8 lg:p-10 overflow-y-auto pt-4">
+          {renderContent()}
+
+          {/* Action buttons - fixed at bottom */}
+          {getTotalSelectedCount() > 0 && (
+            <div className="fixed bottom-6 right-6 flex gap-3">
+              <button
+                onClick={() => setShowWordPressModal(true)}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 shadow-lg"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.026-.78-.07-1.11m-7.981.105c.647-.03 1.232-.105 1.232-.105.582-.075.514-.93-.067-.899 0 0-1.755.135-2.88.135-1.064 0-2.85-.135-2.85-.135-.584-.031-.661.854-.082.899 0 0 .541.075 1.115.105l1.65 4.53-2.31 6.92-3.85-11.45c.645-.03 1.231-.105 1.231-.105.582-.075.516-.93-.065-.899 0 0-1.755.135-2.88.135-.202 0-.438-.008-.69-.015C4.911 2.015 8.235 0 12.001 0c2.756 0 5.27 1.055 7.13 2.78-.045-.003-.087-.008-.125-.008-.202 0-.438-.008-.69-.015-.647.03-1.232.105-1.232.105-.582.075-.514.93.067.899 0 0 .541-.075 1.115-.105l1.65-4.53 2.31-6.92 3.85 11.45z"/>
+                </svg>
+                <span className="hidden sm:inline">Tạo shortcode WP</span>
+                <span className="sm:hidden">WP</span>
+              </button>
+
+              <button
+                onClick={handleOfflineExam}
+                disabled={getTotalSelectedCount() === 0}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed shadow-lg"
+              >
+                <PrinterIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Tải đề</span>
+                <span className="sm:hidden">Tải</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-green-200 text-green-700 rounded text-[10px] font-bold">
+                  {getTotalSelectedCount()}
+                </span>
+              </button>
+
+              <button
+                onClick={handleOnlineExam}
+                disabled={getTotalSelectedCount() === 0}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed shadow-lg"
+              >
+                <PlayCircleIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Thi online</span>
+                <span className="sm:hidden">Thi</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-700 rounded text-[10px] font-bold">
+                  {getTotalSelectedCount()}
+                </span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
-      {/* Sidebar: ẩn trên mobile, hiện trên tablet trở lên */}
-      <div className="hidden md:block">
-        <Sidebar onSelectQuestionType={fetchQuestionTypeData} activeQuestionTypePath={activeQuestionType} />
+          )}
+        </main>
       </div>
-      {/* Sidebar overlay trên mobile */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-40 flex md:hidden">
-          <div className="w-80 bg-white border-r border-gray-200 p-0 h-full overflow-y-auto relative">
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-indigo-600 text-2xl font-bold"
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Đóng menu"
-            >×</button>
-            <Sidebar onSelectQuestionType={(path) => { fetchQuestionTypeData(path); setSidebarOpen(false); }} activeQuestionTypePath={activeQuestionType} />
-          </div>
-          <div className="flex-1" onClick={() => setSidebarOpen(false)}></div>
-        </div>
-      )}
-      {/* Nút mở Sidebar trên mobile - dời sang phải */}
-      <button
-        className="md:hidden fixed top-4 right-4 z-50 bg-white border border-gray-300 rounded-full p-2 shadow-lg hover:bg-indigo-50"
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Mở menu"
-      >
-        <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-      </button>
-      {/* Main content: chiếm toàn bộ màn hình trên mobile */}
-      <main className="flex-1 p-4 sm:p-8 lg:p-10 overflow-y-auto pt-16 md:pt-8 lg:pt-10">
-        {renderContent()}
-      </main>
     </div>
   );
 };

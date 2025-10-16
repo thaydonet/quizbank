@@ -1,21 +1,70 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { ApiKeyManager } from "./apiKeyManager";
 
-const apiKey = import.meta.env.VITE_API_KEY;
-if (!apiKey) {
-    console.warn("VITE_API_KEY environment variable not set. AI features will not work.");
-}
+// Fallback API key từ environment (optional)
+const fallbackApiKey = import.meta.env.VITE_API_KEY;
 
-let ai: GoogleGenAI | null = null;
-if (apiKey) {
-    ai = new GoogleGenAI({ apiKey });
-}
+/**
+ * Lấy API key theo thứ tự ưu tiên:
+ * 1. API key cá nhân của giáo viên (localStorage)
+ * 2. Fallback API key từ environment
+ */
+const getApiKey = (): string | null => {
+    // Ưu tiên API key cá nhân của giáo viên
+    const personalApiKey = ApiKeyManager.getApiKey('gemini');
+    if (personalApiKey) {
+        return personalApiKey;
+    }
+    
+    // Fallback to environment API key
+    if (fallbackApiKey) {
+        return fallbackApiKey;
+    }
+    
+    return null;
+};
+
+/**
+ * Tạo instance GoogleGenAI với API key hiện tại
+ */
+const createGeminiInstance = (): GoogleGenAI | null => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        return null;
+    }
+    
+    try {
+        return new GoogleGenAI({ apiKey });
+    } catch (error) {
+        console.error('Error creating Gemini instance:', error);
+        return null;
+    }
+};
 
 export const generateQuizQuestions = async (prompt: string): Promise<string> => {
     try {
+        const ai = createGeminiInstance();
+        
         if (!ai) {
+            const hasPersonalKey = ApiKeyManager.hasApiKey('gemini');
+            const hasFallbackKey = !!fallbackApiKey;
+            
+            let errorMessage = "API Key chưa được cấu hình";
+            let details = "";
+            
+            if (!hasPersonalKey && !hasFallbackKey) {
+                details = "Vui lòng thêm API Key Gemini cá nhân trong phần Cài đặt AI";
+            } else if (hasPersonalKey) {
+                details = "API Key cá nhân không hợp lệ. Vui lòng kiểm tra lại trong Cài đặt AI";
+            } else {
+                details = "Không thể kết nối với Gemini AI. Vui lòng thử lại sau";
+            }
+            
             return JSON.stringify({ 
-                error: "API Key chưa được cấu hình", 
-                details: "Vui lòng thiết lập API_KEY để sử dụng tính năng AI" 
+                error: errorMessage,
+                details: details,
+                hasPersonalKey,
+                hasFallbackKey
             }, null, 2);
         }
 
