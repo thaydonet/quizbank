@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MENU_DATA } from '../constants';
-import type { Grade, Chapter, Lesson, QuestionType } from '../types';
+// Types for MENU_DATA are inferred from `constants.ts` at runtime.
+// Avoid importing non-existing type aliases from `../types` which does not export them.
 import ChevronDownIcon from './icons/ChevronDownIcon';
 import BookOpenIcon from './icons/BookOpenIcon';
 
@@ -64,9 +65,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectQuestionType, activeQuestionT
   };
 
   return (
-    <aside className="w-80 bg-white border-r border-gray-200 p-4 flex-shrink-0 overflow-y-auto max-h-screen">
+  <aside className="lg:w-80 w-64 bg-white border-r border-gray-200 p-4 flex-shrink-0 overflow-y-auto max-h-screen">
       <nav className="space-y-3">
-        {MENU_DATA.map((grade: Grade) => (
+  {MENU_DATA.map((grade) => (
           <div key={grade.name}>
             {/* Grade Level - Màu đỏ */}
             <button
@@ -85,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectQuestionType, activeQuestionT
             {/* Chapters - Ngang cấp với Grade, màu xanh dương */}
             {openGrades.includes(grade.name) && (
               <div className="mt-2 space-y-2">
-                {grade.chapters.map((chapter: Chapter) => {
+                {grade.chapters.map((chapter) => {
                   const chapterKey = `${grade.name}-${chapter.name}`;
                   return (
                     <div key={chapterKey}>
@@ -105,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectQuestionType, activeQuestionT
                       {/* Lessons - Vào vị trí của Chapter cũ, màu xanh lá */}
                       {openChapters.includes(chapterKey) && (
                         <div className="mt-2 ml-4 space-y-2">
-                          {chapter.lessons.map((lesson: Lesson) => {
+                          {chapter.lessons.map((lesson) => {
                             const lessonKey = `${chapterKey}-${lesson.name}`;
                             return (
                               <div key={lessonKey}>
@@ -125,7 +126,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectQuestionType, activeQuestionT
                                 {/* Question Types - Lớn hơn, màu tím */}
                                 {openLessons.includes(lessonKey) && (
                                   <div className="mt-2 ml-4 space-y-2">
-                                    {lesson.types.map((type: QuestionType) => (
+                                    {lesson.types.map((type) => (
                                       <a
                                         key={type.path}
                                         href="#"
