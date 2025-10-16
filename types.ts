@@ -1,39 +1,46 @@
-
 export interface Question {
   id: string;
-  type: 'mcq' | 'msq' | 'sa'; // mcq: single-choice, msq: multi-choice, sa: short-answer
-  question: string; // Will contain LaTeX
-  option_a?: string; // Will contain LaTeX
-  option_b?: string; // Will contain LaTeX
-  option_c?: string; // Will contain LaTeX
-  option_d?: string; // Will contain LaTeX
-  correct_option: string; // 'A' for mcq, 'A,C' for msq, 'the answer' for sa
-  explanation: string; // Will contain LaTeX
+  type: 'mcq' | 'msq' | 'sa';
+  question: string;
+  option_a?: string;
+  option_b?: string;
+  option_c?: string;
+  option_d?: string;
+  correct_option: string;
+  explanation: string;
+  isDynamic?: boolean;
+  variables?: Record<string, string | number>;
+  // Add missing fields for better type safety
+  difficulty?: 'easy' | 'medium' | 'hard';
+  tags?: string[];
+  created_at?: string;
+  updated_at?: string;
+  // For dynamic questions
+  dynamic_variables?: Record<string, any>;
 }
 
-export type MultipleChoiceQuestion = Question;
-
-export interface QuizData {
+export interface Quiz {
+  id: string;
   title: string;
   questions: Question[];
+  createdAt: string;
+  maxAttempts?: number;
+  createdBy?: string;
 }
 
-export interface QuestionType {
-  name: string;
-  path: string;
+export interface User {
+  id: string;
+  email: string;
+  role: 'student' | 'teacher' | 'admin';
+  student_name?: string;
+  created_at?: string;
 }
 
-export interface Lesson {
-  name: string;
-  types: QuestionType[];
-}
-
-export interface Chapter {
-  name: string;
-  lessons: Lesson[];
-}
-
-export interface Grade {
-  name: string;
-  chapters: Chapter[];
+export interface Score {
+  id: string;
+  quiz_id: string;
+  user_id: string;
+  score: number;
+  submitted_at: string;
+  answers: any[];
 }

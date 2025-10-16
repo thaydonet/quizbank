@@ -1,0 +1,88 @@
+{
+  "title": "Câu hỏi mẫu - Toán 12 - Ứng dụng đạo hàm",
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "Tìm đạo hàm của hàm số $f(x) = x^3 - 3x^2 + 2x - 1$",
+      "option_a": "$f'(x) = 3x^2 - 6x + 2$",
+      "option_b": "$f'(x) = x^3 - 3x^2 + 2$",
+      "option_c": "$f'(x) = 3x^2 - 6x + 1$",
+      "option_d": "$f'(x) = 3x^2 - 3x + 2$",
+      "correct_option": "A",
+      "explanation": "Áp dụng quy tắc đạo hàm: $(x^n)' = nx^{n-1}$ và $(c)' = 0$. Ta có:\\n$f'(x) = 3x^2 - 6x + 2$",
+      "difficulty_level": "easy",
+      "is_dynamic": false,
+      "tags": ["đạo hàm", "cơ bản", "đa thức"]
+    },
+    {
+      "type": "mcq",
+      "question": "Cho hàm số $f(x) = x^3 - 3x + 1$. Hàm số đồng biến trên khoảng nào?",
+      "option_a": "$(-\\infty; -1) \\cup (1; +\\infty)$",
+      "option_b": "$(-1; 1)$",
+      "option_c": "$(-\\infty; 1)$",
+      "option_d": "$(1; +\\infty)$",
+      "correct_option": "A",
+      "explanation": "Ta có $f'(x) = 3x^2 - 3 = 3(x^2 - 1) = 3(x-1)(x+1)$\\n$f'(x) > 0 \\Leftrightarrow x \\in (-\\infty; -1) \\cup (1; +\\infty)$\\nVậy hàm số đồng biến trên $(-\\infty; -1) \\cup (1; +\\infty)$",
+      "difficulty_level": "medium",
+      "is_dynamic": false,
+      "tags": ["đồng biến", "nghịch biến", "khoảng đơn điệu"]
+    },
+    {
+      "type": "mcq",
+      "question": "Cho hàm số $f(x) = !a!x^3 + !b!x^2 + !c!x + !d!$ với $a = !a:1:3!$, $b = !b:-6:-3!$, $c = !c:0:3!$, $d = !d:-2:2!$. Tìm đạo hàm $f'(x)$",
+      "option_a": "$f'(x) = {tinh: 3*!a!}x^2 + {tinh: 2*!b!}x + !c!$",
+      "option_b": "$f'(x) = !a!x^2 + !b!x + !c!$",
+      "option_c": "$f'(x) = {tinh: 3*!a!}x^2 + !b!x + !c!$",
+      "option_d": "$f'(x) = !a!x^3 + !b!x^2 + !c!x$",
+      "correct_option": "A",
+      "explanation": "Áp dụng quy tắc đạo hàm:\\n$(ax^3)' = 3ax^2$, $(bx^2)' = 2bx$, $(cx)' = c$, $(d)' = 0$\\nVới $a = !a!$, $b = !b!$, $c = !c!$:\\n$f'(x) = {tinh: 3*!a!}x^2 + {tinh: 2*!b!}x + !c!$",
+      "difficulty_level": "medium",
+      "is_dynamic": true,
+      "tags": ["đạo hàm", "động", "tham số"]
+    },
+    {
+      "type": "sa",
+      "question": "Tính giá trị đạo hàm của hàm số $f(x) = x^2 + 4x - 3$ tại điểm $x = 2$",
+      "correct_option": "8",
+      "explanation": "Ta có $f'(x) = 2x + 4$\\nTại $x = 2$: $f'(2) = 2 \\cdot 2 + 4 = 4 + 4 = 8$",
+      "difficulty_level": "easy",
+      "is_dynamic": false,
+      "tags": ["đạo hàm", "tính toán", "giá trị tại điểm"]
+    },
+    {
+      "type": "msq",
+      "question": "Cho hàm số $f(x) = x^3 - 3x^2 + 2$. Những khẳng định nào sau đây đúng?",
+      "option_a": "Hàm số có đạo hàm $f'(x) = 3x^2 - 6x$",
+      "option_b": "Hàm số nghịch biến trên $(0; 2)$",
+      "option_c": "Hàm số có cực đại tại $x = 0$",
+      "option_d": "Hàm số có cực tiểu tại $x = 2$",
+      "correct_option": "A,B,C,D",
+      "explanation": "Kiểm tra từng khẳng định:\\nA) $f'(x) = 3x^2 - 6x$ ✓\\nB) $f'(x) = 3x(x-2) < 0$ khi $x \\in (0;2)$ ✓\\nC) $f'(0) = 0$ và $f''(0) = -6 < 0$ nên $x = 0$ là cực đại ✓\\nD) $f'(2) = 0$ và $f''(2) = 6 > 0$ nên $x = 2$ là cực tiểu ✓",
+      "difficulty_level": "hard",
+      "is_dynamic": false,
+      "tags": ["đúng sai", "cực trị", "đồng biến nghịch biến"]
+    },
+    {
+      "type": "mcq",
+      "question": "Tìm giá trị lớn nhất của hàm số $f(x) = x^3 - 3x^2 + 2$ trên đoạn $[0; 3]$",
+      "option_a": "$2$",
+      "option_b": "$-2$",
+      "option_c": "$0$",
+      "option_d": "$1$",
+      "correct_option": "A",
+      "explanation": "Tìm đạo hàm: $f'(x) = 3x^2 - 6x = 3x(x-2)$\\n$f'(x) = 0 \\Leftrightarrow x = 0$ hoặc $x = 2$\\nTính giá trị tại các điểm:\\n$f(0) = 2$, $f(2) = 8 - 12 + 2 = -2$, $f(3) = 27 - 27 + 2 = 2$\\nVậy $\\max_{[0;3]} f(x) = 2$",
+      "difficulty_level": "medium",
+      "is_dynamic": false,
+      "tags": ["GTLN", "GTNN", "đoạn", "cực trị"]
+    },
+    {
+      "type": "sa",
+      "question": "Cho hàm số $f(x) = !a!x^2 + !b!x + !c!$ với $a = !a:1:5!$, $b = !b:-10:10!$, $c = !c:-5:5!$. Tính $f'(1)$",
+      "correct_option": "{tinh: 2*!a! + !b!}",
+      "explanation": "Ta có $f'(x) = {tinh: 2*!a!}x + !b!$\\nVậy $f'(1) = {tinh: 2*!a!} \\cdot 1 + !b! = {tinh: 2*!a! + !b!}$",
+      "difficulty_level": "easy",
+      "is_dynamic": true,
+      "tags": ["đạo hàm", "động", "tính toán"]
+    }
+  ]
+}
