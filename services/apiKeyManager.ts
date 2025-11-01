@@ -66,18 +66,18 @@ export class ApiKeyManager {
   static saveApiKey(provider: 'gemini' | 'openai', apiKey: string): void {
     try {
       const config = this.getApiKeyConfig();
-      
+
       if (provider === 'gemini') {
         config.geminiApiKey = this.encrypt(apiKey);
       } else if (provider === 'openai') {
         config.openaiApiKey = this.encrypt(apiKey);
       }
-      
+
       config.lastUpdated = new Date().toISOString();
       config.isValid = true;
-      
+
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(config));
-      
+
       console.log(`✅ Đã lưu ${provider} API key`);
     } catch (error) {
       console.error('Error saving API key:', error);
@@ -91,13 +91,13 @@ export class ApiKeyManager {
   static getApiKey(provider: 'gemini' | 'openai'): string | null {
     try {
       const config = this.getApiKeyConfig();
-      
+
       if (provider === 'gemini' && config.geminiApiKey) {
         return this.decrypt(config.geminiApiKey);
       } else if (provider === 'openai' && config.openaiApiKey) {
         return this.decrypt(config.openaiApiKey);
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error getting API key:', error);
@@ -117,7 +117,7 @@ export class ApiKeyManager {
     } catch (error) {
       console.error('Error parsing API key config:', error);
     }
-    
+
     return {
       lastUpdated: new Date().toISOString(),
       isValid: false
@@ -129,13 +129,13 @@ export class ApiKeyManager {
    */
   static hasApiKey(provider: 'gemini' | 'openai'): boolean {
     const config = this.getApiKeyConfig();
-    
+
     if (provider === 'gemini') {
       return !!config.geminiApiKey;
     } else if (provider === 'openai') {
       return !!config.openaiApiKey;
     }
-    
+
     return false;
   }
 
@@ -145,17 +145,17 @@ export class ApiKeyManager {
   static removeApiKey(provider: 'gemini' | 'openai'): void {
     try {
       const config = this.getApiKeyConfig();
-      
+
       if (provider === 'gemini') {
         delete config.geminiApiKey;
       } else if (provider === 'openai') {
         delete config.openaiApiKey;
       }
-      
+
       config.lastUpdated = new Date().toISOString();
-      
+
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(config));
-      
+
       console.log(`✅ Đã xóa ${provider} API key`);
     } catch (error) {
       console.error('Error removing API key:', error);
@@ -194,40 +194,121 @@ export class ApiKeyManager {
   }
 
   /**
-   * Test API key bằng cách gọi API
+   * List available models for debugging
+   */
+  static async listGeminiModels(apiKey: string): Promise<string[]> {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.models?.map((model: any) => model.name) || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error listing models:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Test API key bằng SDK để tránh CORS
    */
   static async testApiKey(provider: 'gemini' | 'openai', apiKey: string): Promise<{ valid: boolean; error?: string }> {
     try {
       if (provider === 'gemini') {
-        // Test Gemini API
+        // Sử dụng SDK để tránh CORS
         const { GoogleGenAI } = await import('@google/genai');
         const genAI = new GoogleGenAI({ apiKey });
-        
-        // Simple test call
-        const response = await genAI.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: 'Test connection. Reply with "OK"',
-          config: {
-            maxOutputTokens: 10
+
+        // Thử các model khác nhau dựa trên danh sách có sẵn
+        const modelsToTry = [
+          'gemini-2.5-flash-preview-05-20',
+          'gemini-2.5-pro-preview-03-25',
+          'gemini-1.5-flash',
+          'gemini-1.5-pro',
+          'gemini-pro'
+        ];
+
+        let lastError = '';
+
+        // Chỉ thử 2 model đầu tiên để giảm API calls
+        const limitedModels = modelsToTry.slice(0, 2);
+
+        for (let i = 0; i < limitedModels.length; i++) {
+          const modelName = limitedModels[i];
+          
+          try {
+            // Thêm delay giữa các lần thử để tránh rate limit
+            if (i > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            const result = await genAI.models.generateContent({
+              model: modelName,
+              contents: 'Hi',
+              config: {
+                maxOutputTokens: 5,
+                temperature: 0
+              }
+            });
+
+            const text = result.text;
+
+            if (text && text.trim()) {
+              console.log(`✅ API key valid with model: ${modelName}`);
+              return { valid: true };
+            }
+          } catch (error) {
+            lastError = error instanceof Error ? error.message : 'Unknown error';
+
+            // Nếu là lỗi model không tồn tại, thử model tiếp theo
+            if (lastError.includes('not found') || lastError.includes('not supported')) {
+              continue;
+            }
+
+            // Các lỗi khác (API key sai, quota, etc.) thì return ngay
+            if (lastError.includes('API_KEY_INVALID') || lastError.includes('invalid api key')) {
+              return { valid: false, error: 'API key không hợp lệ' };
+            } else if (lastError.includes('quota') || lastError.includes('limit') || lastError.includes('RATE_LIMIT')) {
+              return { 
+                valid: false, 
+                error: 'Đã vượt quá giới hạn API. Có thể do:\n• Free tier có giới hạn requests/phút\n• Thử test quá nhiều lần\n• Rate limiting tạm thời\n\nHãy đợi vài phút rồi thử lại hoặc lưu không test.' 
+              };
+            } else if (lastError.includes('permission') || lastError.includes('forbidden')) {
+              return { valid: false, error: 'Không có quyền truy cập API' };
+            }
+
+            // Lỗi khác thì thử model tiếp theo
+            continue;
           }
-        });
-        
-        if (response.text) {
-          return { valid: true };
-        } else {
-          return { valid: false, error: 'No response from API' };
         }
+
+        return { valid: false, error: lastError || 'Không thể kết nối với bất kỳ model nào' };
       } else if (provider === 'openai') {
         // Test OpenAI API (placeholder - implement if needed)
         return { valid: false, error: 'OpenAI testing not implemented yet' };
       }
-      
+
       return { valid: false, error: 'Unknown provider' };
     } catch (error) {
       console.error('API key test failed:', error);
-      return { 
-        valid: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+
+      // Xử lý các lỗi cụ thể
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+          return { valid: false, error: 'Lỗi kết nối mạng' };
+        }
+
+        return { valid: false, error: error.message };
+      }
+
+      return {
+        valid: false,
+        error: 'Không thể kết nối đến API'
       };
     }
   }
@@ -240,7 +321,7 @@ export class ApiKeyManager {
     openai: { hasKey: boolean; isValid?: boolean; lastUpdated?: string };
   } {
     const config = this.getApiKeyConfig();
-    
+
     return {
       gemini: {
         hasKey: !!config.geminiApiKey,
@@ -262,11 +343,11 @@ export class ApiKeyManager {
     if (!apiKey || apiKey.length < 8) {
       return '***';
     }
-    
+
     const start = apiKey.substring(0, 4);
     const end = apiKey.substring(apiKey.length - 4);
     const middle = '*'.repeat(Math.min(apiKey.length - 8, 20));
-    
+
     return `${start}${middle}${end}`;
   }
 }
