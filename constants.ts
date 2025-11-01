@@ -1,5 +1,24 @@
 
-import type { Grade } from './types';
+// Define Grade interface locally since it's not in types.ts
+interface Grade {
+  name: string;
+  chapters: Chapter[];
+}
+
+interface Chapter {
+  name: string;
+  lessons: Lesson[];
+}
+
+interface Lesson {
+  name: string;
+  types: QuestionTypeInfo[];
+}
+
+interface QuestionTypeInfo {
+  name: string;
+  path: string;
+}
 
 export const MENU_DATA: Grade[] = [
   {
