@@ -1,97 +1,44 @@
 import React, { useState } from 'react';
-import { generateQuizQuestions } from '../services/geminiService';
 import { ApiKeyManager } from '../services/apiKeyManager';
 import SparklesIcon from '../components/icons/SparklesIcon';
 import ApiKeySettings from '../components/ApiKeySettings';
+import QuizBankGenerator from './QuizBankGenerator';
+import MatrixGenerator from './MatrixGenerator';
+import SimilarExamGenerator from './SimilarExamGenerator';
 
 const AIGeneratorPage: React.FC = () => {
-    const [prompt, setPrompt] = useState<string>('Tạo 10 câu hỏi về chủ đề "CHỦ ĐỀ TOÁN CỦA BẠN" cho lớp 12. Trong đó:\n- 6 câu dạng trắc nghiệm một lựa chọn (mcq) MỨC ĐỘ NHẬN BIẾT.\n- 2 câu dạng trắc nghiệm nhiều lựa chọn (msq) mức độ thông hiểu.\n- 2 câu dạng trả lời ngắn (sa) là toán thực tế mức độ Vận dụng. Định dạng tất cả công thức bằng LaTeX. Cung cấp lời giải chi tiết cho mỗi câu.');
-    const [generatedJson, setGeneratedJson] = useState<string>('');
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [fileName, setFileName] = useState<string>('ten-chu-de-bai-hoc.json');
+    const [selectedMode, setSelectedMode] = useState<'quiz-bank' | 'matrix' | 'similar' | null>(null);
     const [showApiKeySettings, setShowApiKeySettings] = useState<boolean>(false);
     const [apiKeyStatus, setApiKeyStatus] = useState(ApiKeyManager.getApiKeyStatus());
 
-    const handleGenerate = async () => {
-        if (!prompt) {
-            setError('Vui lòng nhập yêu cầu để tạo câu hỏi.');
-            return;
-        }
-
-        // Kiểm tra API key
-        const hasPersonalKey = ApiKeyManager.hasApiKey('gemini');
-        const hasFallbackKey = !!import.meta.env.VITE_API_KEY;
-        
-        if (!hasPersonalKey && !hasFallbackKey) {
-            setError('Chưa có API key. Vui lòng cấu hình API key Gemini để sử dụng tính năng AI.');
-            setGeneratedJson(JSON.stringify({ 
-                error: "Chưa có API key", 
-                details: "Vui lòng click 'Cài đặt API Key' để thêm Gemini API key cá nhân" 
-            }, null, 2));
-            return;
-        }
-
-        setIsLoading(true);
-        setError(null);
-        setGeneratedJson('');
-
-        try {
-            const result = await generateQuizQuestions(prompt);
-            setGeneratedJson(result);
-
-            // Kiểm tra kết quả có lỗi không
-            try {
-                const parsedResult = JSON.parse(result);
-                if (parsedResult.error) {
-                    setError(parsedResult.details || parsedResult.error);
-                }
-            } catch (e) {
-                // Không phải lỗi, chỉ là kiểm tra
-            }
-        } catch (error) {
-            console.error('Error generating questions:', error);
-            setError('Có lỗi xảy ra khi tạo câu hỏi. Vui lòng thử lại.');
-            setGeneratedJson(JSON.stringify({ 
-                error: "Lỗi tạo câu hỏi", 
-                details: error instanceof Error ? error.message : 'Unknown error' 
-            }, null, 2));
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleApiKeyUpdated = () => {
         setApiKeyStatus(ApiKeyManager.getApiKeyStatus());
-        setError(null); // Clear any previous API key errors
     };
 
-    const handleDownload = () => {
-        if (!generatedJson) {
-            setError('Không có nội dung JSON để tải xuống.');
+    const handleModeSelect = (mode: 'quiz-bank' | 'matrix' | 'similar') => {
+        // Kiểm tra API key trước khi chuyển trang
+        const hasPersonalKey = ApiKeyManager.hasApiKey('gemini');
+        if (!hasPersonalKey) {
+            setShowApiKeySettings(true);
             return;
         }
-        try {
-            JSON.parse(generatedJson);
-            const blob = new Blob([generatedJson], { type: 'application/json;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            setError('Nội dung không phải là JSON hợp lệ. Vui lòng sửa lại trước khi tải.');
-        }
+        setSelectedMode(mode);
     };
 
-    const baseInputClasses = "w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition";
+    // Render specific mode component
+    if (selectedMode === 'quiz-bank') {
+        return <QuizBankGenerator onBack={() => setSelectedMode(null)} />;
+    }
+    if (selectedMode === 'matrix') {
+        return <MatrixGenerator onBack={() => setSelectedMode(null)} />;
+    }
+    if (selectedMode === 'similar') {
+        return <SimilarExamGenerator onBack={() => setSelectedMode(null)} />;
+    }
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50">
-            <div className="max-w-7xl mx-auto">
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+            <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-10">
                     <div className="flex items-center justify-center gap-4 mb-4">
                         <h1 className="text-4xl font-bold text-gray-900">Trình tạo câu hỏi bằng AI</h1>
@@ -103,104 +50,97 @@ const AIGeneratorPage: React.FC = () => {
                         </button>
                     </div>
                     <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-4">
-                        Nhập yêu cầu chi tiết. AI sẽ tạo bộ câu hỏi theo định dạng JSON chuẩn, hỗ trợ 3 dạng câu hỏi, LaTeX và lời giải chi tiết.
+                        Chọn phương thức tạo câu hỏi phù hợp với nhu cầu của bạn
                     </p>
-                    
+
                     {/* API Key Status */}
                     <div className="flex justify-center">
-                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${
-                            apiKeyStatus.gemini.hasKey 
-                                ? 'bg-green-100 text-green-800 border border-green-200' 
-                                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                        }`}>
+                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm ${apiKeyStatus.gemini.hasKey
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
                             {apiKeyStatus.gemini.hasKey ? (
                                 <>
                                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                    API Key: Đã cấu hình (Gemini)
+                                    API Key: Đã cấu hình
                                 </>
                             ) : (
                                 <>
-                                    <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                    API Key: {import.meta.env.VITE_API_KEY ? 'Dùng mặc định' : 'Chưa cấu hình'}
+                                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                    API Key: Chưa cấu hình (Bắt buộc)
                                 </>
                             )}
                         </div>
                     </div>
                 </div>
-                
-                {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md" role="alert"><p className="font-bold">Đã xảy ra lỗi</p><p>{error}</p></div>}
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* --- Input Column --- */}
-                    <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200">
-                        <div>
-                            <label htmlFor="prompt" className="block text-base font-semibold text-gray-700 mb-2">Yêu cầu (Prompt)</label>
-                            <textarea
-                                id="prompt"
-                                rows={12}
-                                className={baseInputClasses}
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Ví dụ: Tạo 5 câu trắc nghiệm về cực trị hàm số, trong đó có 1 câu thực tế. Tất cả công thức toán phải dùng LaTeX. Cung cấp lời giải chi tiết."
-                            />
+
+                {/* Mode Selection Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Quiz Bank Generator */}
+                    <div
+                        onClick={() => handleModeSelect('quiz-bank')}
+                        className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-indigo-200 group"
+                    >
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-200 transition-colors">
+                                <SparklesIcon className="w-8 h-8 text-indigo-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Tạo câu hỏi cho Quiz Bank</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Tạo câu hỏi theo yêu cầu tự do, hỗ trợ 3 dạng câu hỏi với LaTeX và lời giải chi tiết
+                            </p>
+                            <div className="text-indigo-600 font-semibold text-sm">
+                                Bắt đầu tạo →
+                            </div>
                         </div>
-                        <button
-                            onClick={handleGenerate}
-                            disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-3 px-6 py-3 text-lg font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-lg hover:shadow-indigo-500/20"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white"></div>
-                                    <span>Đang tạo...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <SparklesIcon className="w-6 h-6"/>
-                                    <span>Tạo câu hỏi</span>
-                                </>
-                            )}
-                        </button>
                     </div>
 
-                    {/* --- Output Column --- */}
-                    <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200">
-                        <div>
-                            <label htmlFor="json-output" className="block text-base font-semibold text-gray-700 mb-2">Kết quả JSON (có thể chỉnh sửa)</label>
-                            <textarea
-                                id="json-output"
-                                rows={16}
-                                className={`${baseInputClasses} font-mono text-sm bg-gray-50/70 focus:ring-green-500/50 focus:border-green-500`}
-                                value={generatedJson}
-                                onChange={(e) => setGeneratedJson(e.target.value)}
-                                placeholder="Kết quả JSON sẽ xuất hiện ở đây..."
-                            />
-                        </div>
-                        <div className="flex items-end gap-4">
-                            <div className="flex-grow">
-                                <label htmlFor="file-name" className="block text-sm font-medium text-gray-700 mb-1">Tên file</label>
-                                <input
-                                    type="text"
-                                    id="file-name"
-                                    className="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition"
-                                    value={fileName}
-                                    onChange={(e) => setFileName(e.target.value)}
-                                />
+                    {/* Matrix Generator */}
+                    <div
+                        onClick={() => handleModeSelect('matrix')}
+                        className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-purple-200 group"
+                    >
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
+                                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2z" />
+                                </svg>
                             </div>
-                            <button
-                                onClick={handleDownload}
-                                disabled={!generatedJson || isLoading}
-                                className="px-5 py-2 text-base font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 disabled:bg-green-400 disabled:cursor-not-allowed transition shadow-sm"
-                            >
-                                Tải file .json
-                            </button>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Tạo đề theo ma trận</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Nhập ma trận đề thi, AI sẽ tạo đề thi theo cấu trúc và yêu cầu cụ thể
+                            </p>
+                            <div className="text-purple-600 font-semibold text-sm">
+                                Tạo theo ma trận →
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Similar Exam Generator */}
+                    <div
+                        onClick={() => handleModeSelect('similar')}
+                        className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-green-200 group"
+                    >
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition-colors">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Tạo đề tương tự</h3>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Upload file Word/PDF mẫu, AI sẽ tạo đề thi tương tự với cấu trúc và độ khó tương đương
+                            </p>
+                            <div className="text-green-600 font-semibold text-sm">
+                                Upload và tạo →
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* API Key Settings Modal */}
                 {showApiKeySettings && (
-                    <ApiKeySettings 
+                    <ApiKeySettings
                         onClose={() => setShowApiKeySettings(false)}
                         onApiKeyUpdated={handleApiKeyUpdated}
                     />
