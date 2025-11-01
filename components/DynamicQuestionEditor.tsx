@@ -175,6 +175,20 @@ export default function DynamicQuestionEditor({ onSave, onCancel }: DynamicQuest
               <div>
                 <strong>Sử dụng biến:</strong> <code>!tên!</code> sau khi đã định nghĩa
               </div>
+              <div>
+                <strong>💡 Tự động xử lý dấu:</strong> Hệ thống tự động chuyển <code>+ -</code> thành <code>-</code> và <code>- -</code> thành <code>+</code>
+                <br />
+                Ví dụ: <code>$x^2 + !b!x$</code> với b=-5 sẽ hiển thị <code>$x^2 - 5x$</code>
+              </div>
+              <div>
+                <strong>🎯 Quy tắc toán học:</strong> Tự động áp dụng quy tắc cho 0 và 1 (hỗ trợ mọi bậc: x, x^2, x^3, x^4, ...)
+                <br />
+                • <code>1x^3</code> → <code>x^3</code>, <code>-1x^2</code> → <code>-x^2</code>
+                <br />
+                • <code>0x^4</code> → bỏ số hạng, <code>x^1</code> → <code>x</code>, <code>x^0</code> → <code>1</code>
+                <br />
+                • Ví dụ: <code>1x^3 + 0x^2 + -1x + 0</code> → <code>x^3 - x</code>
+              </div>
             </div>
           </div>
 
